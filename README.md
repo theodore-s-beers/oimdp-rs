@@ -2,7 +2,7 @@
 
 Rust reimplementation of [oimdp](https://github.com/OpenITI/oimdp). Still a work in progress—the functions are all there, but tests need to be written.
 
-I wanted to figure out if [OpenITI mARkdown](https://alraqmiyyat.github.io/mARkdown/) is worth investing in, and I learned a lot about the format by translating the parser from Python. So far, I'm not convinced. This feels brittle and un-ergonomic. The prolific use of regular expressions dismayed me.
+I wanted to figure out if [OpenITI mARkdown](https://alraqmiyyat.github.io/mARkdown/) is worth investing in, and I learned a lot about the system by translating the parser from Python. So far, I'm not convinced. This feels brittle and un-ergonomic. The prolific use of regular expressions dismayed me.
 
 What I like about normal Markdown (Pandoc being my preferred variant) is that it's in a "Goldilocks zone" of complexity. It's human-readable; it mostly stays out of my way; I can use it to generate rich text or HTML at a reasonable level; it's plain text and plays nicely with version control; it can be parsed, auto-formatted, linted, etc. It just feels right to me. If it were less—i.e., if it were plain-plain text—I wouldn't want to use it to write documents of any length or complexity. If, on the other hand, Markdown tried to do much more than it does… then I don't think the tradeoffs would make sense anymore. We reach a point at which it's simply better to separate the writing environment from the underlying document format—with the latter becoming at least semi-structured data. Of course, that brings huge advantages. It can also be frustrating, as we all know from using Word or managing blogs in WordPress.
 
