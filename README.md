@@ -14,13 +14,13 @@ But what OpenITI mARkdown tries to accomplish is several steps too far. Parsing 
 
 The next step—and arguably the most important part of this whole effort—will be to recreate the tests from the Python library. There are only a few trivial tests at present. But they can be run with the following command (`--release` mode definitely recommended here):
 
-```
+```sh
 cargo test --release
 ```
 
 I may also beef up the main function so that it does something meaningful. For the moment, you can just run it to parse an OpenITI mARkdown document by adding the path as a command-line argument, e.g.
 
-```
+```sh
 cargo run --release -- test.md
 ```
 
