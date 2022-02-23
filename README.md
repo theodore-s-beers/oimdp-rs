@@ -24,4 +24,4 @@ I may also beef up the main function so that it does something meaningful. For t
 cargo run --release -- test.md
 ```
 
-The program will print the number of objects in the resulting document object---something over 36,000 for the main test file.
+The program will print the number of objects in the resulting document object—something over 36,000 for the main test file.
