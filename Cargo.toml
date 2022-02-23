@@ -1,0 +1,9 @@
+[package]
+name = "oimdp-rs"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0.55"
+lazy_static = "1.4.0"
+regex = { version = "1.5.4", features = ["pattern"] }
