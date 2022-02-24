@@ -1,5 +1,4 @@
 use anyhow::{anyhow, Result};
-use lazy_static::lazy_static;
 use regex::Regex;
 
 // Document
@@ -75,6 +74,7 @@ pub struct AdministrativeRegion {
 }
 
 // Paragraph
+// Here I switched to use one struct, with a field to indicate the type
 
 #[derive(Clone, Debug)]
 pub struct Paragraph {
@@ -83,6 +83,7 @@ pub struct Paragraph {
 }
 
 // Line
+// Here I switched to use one struct, with a field to indicate the type
 
 #[derive(Clone, Debug)]
 pub struct Line {
@@ -93,7 +94,7 @@ pub struct Line {
 }
 
 // Line parts
-// PageNumber is grouped under Content, but it can belong to either enum
+// PageNumber is defined under Content, but it belongs to both enums
 
 #[derive(Clone, Debug)]
 pub enum LinePart {
@@ -276,21 +277,34 @@ const BIOS_EVENTS: [&str; 12] = [
     LIST_EVENTS_FULL,
 ];
 
+// Macro
+
+macro_rules! regex {
+    ($re:literal $(,)?) => {{
+        static RE: once_cell::sync::OnceCell<regex::Regex> = once_cell::sync::OnceCell::new();
+        RE.get_or_init(|| regex::Regex::new($re).unwrap())
+    }};
+}
+
 // Functions
 
-fn split_keep<'a>(r: &Regex, text: &'a str) -> Vec<&'a str> {
+fn split_keep<'a>(re: &Regex, text: &'a str) -> Vec<&'a str> {
     let mut result = Vec::new();
     let mut last = 0;
-    for (index, matched) in text.match_indices(r) {
+
+    for (index, matched) in text.match_indices(re) {
         if last != index {
             result.push(&text[last..index]);
         }
+
         result.push(matched);
         last = index + matched.len();
     }
+
     if last < text.len() {
         result.push(&text[last..]);
     }
+
     result
 }
 
@@ -301,30 +315,27 @@ fn remove_phrase_lv_tags(line: String) -> String {
         text_only = text_only.replace(tag, "");
     }
 
-    lazy_static! {
-        static ref YIKES: Regex = Regex::new(
-            r"(?x)
-            (
-                @YA\d{1,4}     | # Year 1 (age)
-                @YD\d{1,4}     | # Year 2 (death)
-                @YB\d{1,4}     | # Year 3 (birth)
-                @YY\d{1,4}     | # Year 4 (other)
-                @TOP\d{1,2}    | # Topological full
-                @T\d{1,2}      | # Topological
-                @PER\d{1,2}    | # Person full
-                @P\d{1,2}      | # Person
-                @SRC\d{1,2}    | # Source (?)
-                @SOC\d{1,2}    | # SOC full (?)
-                @S\d{1,2}      | # SOC (?)
-                @([^@]+?)@([^_@]+?)_([^_@]+?)(_([^_@]+?))?@               | # OPEN_TAG_CUSTOM_GRP
-                @([A-Z]{3})@([A-Z]{3,})@([A-Za-z]+)@(-@([0tf][ftalmr])@)? | # OPEN_TAG_AUTO_GRP
-                PageV(\d+)P(\d+) # Page pattern
-            )",
-        )
-        .unwrap();
-    }
+    let yikes = regex!(
+        r"(?x)
+        (
+            @YA\d{1,4}     | # Year 1 (age)
+            @YD\d{1,4}     | # Year 2 (death)
+            @YB\d{1,4}     | # Year 3 (birth)
+            @YY\d{1,4}     | # Year 4 (other)
+            @TOP\d{1,2}    | # Topological full
+            @T\d{1,2}      | # Topological
+            @PER\d{1,2}    | # Person full
+            @P\d{1,2}      | # Person
+            @SRC\d{1,2}    | # Source (?)
+            @SOC\d{1,2}    | # SOC full (?)
+            @S\d{1,2}      | # SOC (?)
+            @([^@]+?)@([^_@]+?)_([^_@]+?)(_([^_@]+?))?@               | # OPEN_TAG_CUSTOM_GRP
+            @([A-Z]{3})@([A-Z]{3,})@([A-Za-z]+)@(-@([0tf][ftalmr])@)? | # OPEN_TAG_AUTO_GRP
+            PageV(\d+)P(\d+) # Page pattern
+        )"
+    );
 
-    text_only = YIKES.replace_all(&text_only, "").to_string();
+    text_only = yikes.replace_all(&text_only, "").to_string();
 
     text_only
 }
@@ -347,53 +358,42 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
 
     // Aaaaaaaaaaaa
 
-    lazy_static! {
-        static ref UNGODLY: Regex = Regex::new(
-            r"(?x)
-            (
-                PageV\d+P\d+ | # Page number
-                @[A-Z]{3}@[A-Z]{3,}@[A-Za-z]+@(?:-@[0tf][ftalmr]@)? | # OPEN_TAG_AUTO
-                @[^@]+?@[^_@]+?_[^_@]+?(?:_[^_@]+?)?@               | # OPEN_TAG_CUSTOM
-                %~%          | # HEMI
-                Milestone300 | # MILESTONE
-                @MATN@       | # MATN
-                @HUKM@       | # HUKM
-                \#\$\#FROM   | # ROUTE_FROM
-                \#\$\#TOWA   | # ROUTE_TOWA
-                \#\$\#DIST   | # ROUTE_DIST
-                @YA\d{1,4}   | # Year 1 (age)
-                @YD\d{1,4}   | # Year 2 (death)
-                @YB\d{1,4}   | # Year 3 (birth)
-                @YY\d{1,4}   | # Year 4 (other)
-                @TOP\d{1,2}  | # Topological full (?)
-                @T\d{1,2}    | # Topological (?)
-                @PER\d{1,2}  | # Person full (?)
-                @P\d{1,2}    | # Person (?)
-                @SRC\d{1,2}  | # Source (?)
-                @SOC\d{1,2}  | # SOC full (?)
-                @S\d{1,2}      # SOC (?)
-            )",
-        )
-        .unwrap();
-    }
+    let ungodly = regex!(
+        r"(?x)
+        (
+            PageV\d+P\d+ | # Page number
+            @[A-Z]{3}@[A-Z]{3,}@[A-Za-z]+@(?:-@[0tf][ftalmr]@)? | # OPEN_TAG_AUTO
+            @[^@]+?@[^_@]+?_[^_@]+?(?:_[^_@]+?)?@               | # OPEN_TAG_CUSTOM
+            %~%          | # HEMI
+            Milestone300 | # MILESTONE
+            @MATN@       | # MATN
+            @HUKM@       | # HUKM
+            \#\$\#FROM   | # ROUTE_FROM
+            \#\$\#TOWA   | # ROUTE_TOWA
+            \#\$\#DIST   | # ROUTE_DIST
+            @YA\d{1,4}   | # Year 1 (age)
+            @YD\d{1,4}   | # Year 2 (death)
+            @YB\d{1,4}   | # Year 3 (birth)
+            @YY\d{1,4}   | # Year 4 (other)
+            @TOP\d{1,2}  | # Topological full (?)
+            @T\d{1,2}    | # Topological (?)
+            @PER\d{1,2}  | # Person full (?)
+            @P\d{1,2}    | # Person (?)
+            @SRC\d{1,2}  | # Source (?)
+            @SOC\d{1,2}  | # SOC full (?)
+            @S\d{1,2}      # SOC (?)
+        )"
+    );
 
-    lazy_static! {
-        static ref OPEN_TAG_CUSTOM_PATTERN_GROUPED: Regex =
-            Regex::new(r"^@([^@]+?)@([^_@]+?)_([^_@]+?)(_([^_@]+?))?@").unwrap();
-    }
+    let open_tag_custom_pattern_grouped = regex!("^@([^@]+?)@([^_@]+?)_([^_@]+?)(_([^_@]+?))?@");
+    let open_tag_auto_pattern_grouped =
+        regex!("^@([A-Z]{3})@([A-Z]{3,})@([A-Za-z]+)@(-@([0tf][ftalmr])@)?");
 
-    lazy_static! {
-        static ref OPEN_TAG_AUTO_PATTERN_GROUPED: Regex =
-            Regex::new(r"^@([A-Z]{3})@([A-Z]{3,})@([A-Za-z]+)@(-@([0tf][ftalmr])@)?").unwrap();
-    }
+    let page_pattern = regex!(r"PageV(\d+)P(\d+)");
 
-    lazy_static! {
-        static ref PAGE_PATTERN: Regex = Regex::new(r"PageV(\d+)P(\d+)").unwrap();
-    }
+    let tokens = split_keep(ungodly, line);
 
-    let tokens = split_keep(&UNGODLY, line);
-
-    let custom_pattern_test = OPEN_TAG_CUSTOM_PATTERN_GROUPED
+    let custom_pattern_test = open_tag_custom_pattern_grouped
         .captures("@USER@CAT_SUBCAT_SUBSUBCAT@")
         .unwrap();
 
@@ -402,7 +402,7 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
     assert_eq!(&custom_pattern_test[3], "SUBCAT");
     assert_eq!(&custom_pattern_test[5], "SUBSUBCAT");
 
-    let auto_pattern_test = OPEN_TAG_AUTO_PATTERN_GROUPED
+    let auto_pattern_test = open_tag_auto_pattern_grouped
         .captures("@RES@TYPE@Category@-@fr@")
         .unwrap();
 
@@ -424,12 +424,12 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
         let mut opentagauto_captures: Option<regex::Captures> = None;
 
         if token_trimmed.starts_with('@') {
-            opentag_captures = OPEN_TAG_CUSTOM_PATTERN_GROUPED.captures(token_trimmed);
-            opentagauto_captures = OPEN_TAG_AUTO_PATTERN_GROUPED.captures(token_trimmed);
+            opentag_captures = open_tag_custom_pattern_grouped.captures(token_trimmed);
+            opentagauto_captures = open_tag_auto_pattern_grouped.captures(token_trimmed);
         }
 
         if token_trimmed.contains(PAGE) {
-            let page_captures = PAGE_PATTERN.captures(token_trimmed);
+            let page_captures = page_pattern.captures(token_trimmed);
             if let Some(page_matches) = page_captures {
                 let vol = page_matches[1].to_string();
                 let page = page_matches[2].to_string();
@@ -706,27 +706,12 @@ pub fn parser(input: String) -> Result<Document> {
         content: Vec::new(),
     };
 
-    lazy_static! {
-        static ref PAGE_PATTERN: Regex = Regex::new(r"PageV(\d+)P(\d+)").unwrap();
-    }
-
-    lazy_static! {
-        static ref MORPHO_PATTERN: Regex = Regex::new(r"#~:([^:]+?):").unwrap();
-    }
-
-    lazy_static! {
-        static ref PARA_PATTERN: Regex = Regex::new(r"^#($|[^#])").unwrap();
-    }
-
-    lazy_static! {
-        static ref BIO_PATTERN: Regex = Regex::new(r"### $[^#]").unwrap();
-    }
-
-    lazy_static! {
-        static ref REGION_PATTERN: Regex =
-            Regex::new(r"(#$#PROV|#$#REG\d) .*? #$#TYPE .*? (#$#REG\d|#$#STTL) ([\w# ]+) $")
-                .unwrap();
-    }
+    let page_pattern = regex!(r"PageV(\d+)P(\d+)");
+    let morpho_pattern = regex!("#~:([^:]+?):");
+    let para_pattern = regex!("^#($|[^#])");
+    let bio_pattern = regex!("### $[^#]");
+    let region_pattern =
+        regex!(r"(#$#PROV|#$#REG\d) .*? #$#TYPE .*? (#$#REG\d|#$#STTL) ([\w# ]+) $");
 
     for (i, line) in input.lines().enumerate() {
         let line_trimmed = line.trim();
@@ -749,7 +734,7 @@ pub fn parser(input: String) -> Result<Document> {
             let value = line.trim_start_matches(META).trim();
             doc.simple_metadata.push(value.to_string());
         } else if line_trimmed.starts_with(PAGE) {
-            if let Some(cap) = PAGE_PATTERN.captures(line_trimmed) {
+            if let Some(cap) = page_pattern.captures(line_trimmed) {
                 let vol = cap[1].to_string();
                 let page = cap[2].to_string();
 
@@ -773,14 +758,14 @@ pub fn parser(input: String) -> Result<Document> {
             if let Some(parsed_line_content) = parsed_line {
                 doc.content.push(Content::Line(parsed_line_content));
             }
-        } else if let Some(cap) = MORPHO_PATTERN.captures(line_trimmed) {
+        } else if let Some(cap) = morpho_pattern.captures(line_trimmed) {
             let category = cap[1].to_string();
             doc.content
                 .push(Content::MorphologicalPattern(MorphologicalPattern {
                     orig: line_trimmed.to_string(),
                     category,
                 }));
-        } else if PARA_PATTERN.is_match(line_trimmed) {
+        } else if para_pattern.is_match(line_trimmed) {
             if line_trimmed.contains(HEMI) {
                 let verse_parsed = parse_line(&line_trimmed[1..], Some("verse".to_string()), false);
                 if let Some(verse_content) = verse_parsed {
@@ -867,7 +852,7 @@ pub fn parser(input: String) -> Result<Document> {
             if let Some(first_line_content) = first_line {
                 doc.content.push(Content::Line(first_line_content));
             }
-        } else if BIO_PATTERN.is_match(line_trimmed)
+        } else if bio_pattern.is_match(line_trimmed)
             || line_trimmed.starts_with(BIO)
             || line_trimmed.starts_with(EVENT)
         {
@@ -895,7 +880,7 @@ pub fn parser(input: String) -> Result<Document> {
             if let Some(first_line_content) = first_line {
                 doc.content.push(Content::Line(first_line_content));
             }
-        } else if REGION_PATTERN.is_match(line_trimmed) {
+        } else if region_pattern.is_match(line_trimmed) {
             doc.content
                 .push(Content::AdministrativeRegion(AdministrativeRegion {
                     orig: line_trimmed.to_string(),
