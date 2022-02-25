@@ -22,15 +22,25 @@ fn split_keep<'a>(re: &Regex, text: &'a str) -> Vec<&'a str> {
     let mut result = Vec::new();
     let mut last = 0;
 
-    for (index, matched) in text.match_indices(re) {
+    // Is it safe that this function works based on the byte length of strings?
+    // I guess it's probably ok in this context
+
+    for (index, separator) in text.match_indices(re) {
+        // Ok, we matched on a separator
+        // First add to the result the text leading up to the separator
+        // i.e., the text since "last"
         if last != index {
             result.push(&text[last..index]);
         }
 
-        result.push(matched);
-        last = index + matched.len();
+        // Also add to the result the separator itself
+        // And update "last" to just after the separator (I think)
+        result.push(separator);
+        last = index + separator.len();
     }
 
+    // If some text remains between the end of the last separator and the end of the string,
+    // also add that to the result
     if last < text.len() {
         result.push(&text[last..]);
     }
