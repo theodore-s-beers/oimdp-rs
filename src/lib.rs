@@ -344,19 +344,26 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
     // Remove initial line marker
     let line = tagged_line.trim_start_matches(LINE);
 
+    // Remove phrase-level tags (whatever that means)
     let text_only = remove_phrase_lv_tags(line.to_string());
 
+    // Return early if there's nothing left at this point
     if text_only.is_empty() {
         return None;
     }
 
+    // Create vec for line parts
     let mut parts: Vec<LinePart> = Vec::new();
 
+    // If any first_token was indicated, add an Isnad part to the line
+    // This is weird right now because the only kind of first_token that has been implemented
+    // is Isnad. So I made the function argument into a bool for simplicity.
+    // But I still don't understand what this is supposed to accomplish
     if first_token {
         parts.push(LinePart::Isnad(Isnad {}))
     }
 
-    // Aaaaaaaaaaaa
+    // Regex sadness
 
     let ungodly = regex!(
         r"(?x)
@@ -385,14 +392,17 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
         )"
     );
 
+    // Split the line on tokens using the mega-regex, while keeping the tokens
+    // This requires a custom function in Rust, unlike in Python
+    let tokens = split_keep(ungodly, line);
+
     let open_tag_custom_pattern_grouped = regex!("^@([^@]+?)@([^_@]+?)_([^_@]+?)(_([^_@]+?))?@");
     let open_tag_auto_pattern_grouped =
         regex!("^@([A-Z]{3})@([A-Z]{3,})@([A-Za-z]+)@(-@([0tf][ftalmr])@)?");
 
     let page_pattern = regex!(r"PageV(\d+)P(\d+)");
 
-    let tokens = split_keep(ungodly, line);
-
+    /* These were temporary tests to make sure certain regexes worked properly
     let custom_pattern_test = open_tag_custom_pattern_grouped
         .captures("@USER@CAT_SUBCAT_SUBSUBCAT@")
         .unwrap();
@@ -410,6 +420,7 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
     assert_eq!(&auto_pattern_test[2], "TYPE");
     assert_eq!(&auto_pattern_test[3], "Category");
     assert_eq!(&auto_pattern_test[5], "fr");
+    */
 
     let mut include_words: u32 = 0;
 
@@ -699,6 +710,7 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
 }
 
 pub fn parser(input: String) -> Result<Document> {
+    // This is our return value, gods willing
     let mut doc = Document {
         orig_text: input.clone(),
         magic_value: String::new(),
@@ -706,6 +718,7 @@ pub fn parser(input: String) -> Result<Document> {
         content: Vec::new(),
     };
 
+    // Regexes. It would probably be ok to skip the once_cell approach here, but whatever
     let page_pattern = regex!(r"PageV(\d+)P(\d+)");
     let morpho_pattern = regex!("#~:([^:]+?):");
     let para_pattern = regex!("^#($|[^#])");
@@ -713,14 +726,19 @@ pub fn parser(input: String) -> Result<Document> {
     let region_pattern =
         regex!(r"(#$#PROV|#$#REG\d) .*? #$#TYPE .*? (#$#REG\d|#$#STTL) ([\w# ]+) $");
 
+    // Main loop
     for (i, line) in input.lines().enumerate() {
+        // Start by trimming whitespace. This version is all we'll use henceforth
         let line_trimmed = line.trim();
 
-        // Magic value
+        // Check for magic value
         if i == 0 && line_trimmed.starts_with("######OpenITI#") {
             doc.magic_value = line_trimmed.to_string();
+
+            // Need to specify continue here; but everything that follows is if/else
             continue;
         } else if i == 0 {
+            // If it's the first line and doesn't start with the magic value, abort
             return Err(anyhow!(
                 "This does not appear to be an OpenITI mARkdown document"
             ));
@@ -728,12 +746,17 @@ pub fn parser(input: String) -> Result<Document> {
 
         // Non-machine-readable metadata
         if line_trimmed.starts_with(META) {
+            // I guess the metadata ending tag gets dropped in parsing
             if line_trimmed == META_END {
                 continue;
             }
-            let value = line.trim_start_matches(META).trim();
-            doc.simple_metadata.push(value.to_string());
+
+            // Much trimming!
+            let value = line_trimmed.trim_start_matches(META).trim().to_string();
+            doc.simple_metadata.push(value);
+        // Page number (not sure why this would happen)
         } else if line_trimmed.starts_with(PAGE) {
+            // Try to capture volume and page numbers
             if let Some(cap) = page_pattern.captures(line_trimmed) {
                 let vol = cap[1].to_string();
                 let page = cap[2].to_string();
@@ -741,33 +764,50 @@ pub fn parser(input: String) -> Result<Document> {
                 doc.content
                     .push(Content::PageNumber(PageNumber { vol, page }));
             } else {
-                // They raise an exception here...
+                // An exception is raised here in the Python library; I haven't done anything
             }
+        // Riwāya
         } else if line_trimmed.starts_with(RWY) {
+            // First add the whole line
             doc.content.push(Content::Paragraph(Paragraph {
                 orig: line_trimmed.to_string(),
                 para_type: "riwayat".to_string(),
             }));
-            let first_line = parse_line(line_trimmed.trim_start_matches(RWY), None, false);
+
+            // Then parse everything after the riwāya tag
+            let double_trimmed = line_trimmed.trim_start_matches(RWY);
+            let first_line = parse_line(double_trimmed, None, false);
+
             if let Some(first_line_content) = first_line {
                 doc.content.push(Content::Line(first_line_content));
             }
+        // Route from
         } else if line_trimmed.starts_with(ROUTE_FROM) {
-            let parsed_line =
-                parse_line(line_trimmed, Some("route_or_distance".to_string()), false);
+            let kind = "route_or_distance".to_string();
+            let parsed_line = parse_line(line_trimmed, Some(kind), false);
+
             if let Some(parsed_line_content) = parsed_line {
                 doc.content.push(Content::Line(parsed_line_content));
             }
+        // Morphological pattern
         } else if let Some(cap) = morpho_pattern.captures(line_trimmed) {
             let category = cap[1].to_string();
+
             doc.content
                 .push(Content::MorphologicalPattern(MorphologicalPattern {
                     orig: line_trimmed.to_string(),
                     category,
                 }));
+        // Paragraph
         } else if para_pattern.is_match(line_trimmed) {
+            // This line will be parsed without the initial paragraph marker
+            let no_marker = &line_trimmed[1..];
+
+            // If line contains hemistich marker (which can occur in the middle)...
             if line_trimmed.contains(HEMI) {
-                let verse_parsed = parse_line(&line_trimmed[1..], Some("verse".to_string()), false);
+                let kind = "verse".to_string();
+                let verse_parsed = parse_line(no_marker, Some(kind), false);
+
                 if let Some(verse_content) = verse_parsed {
                     doc.content.push(Content::Line(verse_content));
                 }
@@ -777,28 +817,40 @@ pub fn parser(input: String) -> Result<Document> {
                     para_type: "para".to_string(),
                 }));
 
-                let first_line = parse_line(&line_trimmed[1..], None, false);
+                let first_line = parse_line(no_marker, None, false);
                 if let Some(first_line_content) = first_line {
                     doc.content.push(Content::Line(first_line_content));
                 }
             }
+        // Line
         } else if line_trimmed.starts_with(LINE) {
             let parsed_line = parse_line(line_trimmed, None, false);
+
             if let Some(parsed_line_content) = parsed_line {
                 doc.content.push(Content::Line(parsed_line_content));
             }
+        // Editorial (whatever that means)
         } else if line_trimmed.starts_with(EDITORIAL) {
             doc.content.push(Content::Editorial(Editorial {
                 orig: line_trimmed.to_string(),
             }));
+        // Heading
         } else if line_trimmed.starts_with(HEADER1) {
+            // I think "value" means the actual heading content, minus the tag
             let mut value = line_trimmed.to_string();
+
             for tag in HEADERS {
                 value = value.replace(tag, "").to_string();
             }
+
             value = remove_phrase_lv_tags(value);
+
+            // The following comment is copied from the Python library
             // TODO: capture tags as PhraseParts
+
+            // Now we determine the heading level
             let mut level: u32 = 1;
+
             if line_trimmed.contains(HEADER5) {
                 level = 5;
             } else if line_trimmed.contains(HEADER4) {
@@ -808,18 +860,26 @@ pub fn parser(input: String) -> Result<Document> {
             } else if line_trimmed.contains(HEADER2) {
                 level = 2;
             }
+
             doc.content.push(Content::SectionHeader(SectionHeader {
                 orig: line_trimmed.to_string(),
                 value,
                 level,
             }));
+        // Dictionary content (?)
         } else if line_trimmed.starts_with(DIC) {
+            // Strip tags
             let mut no_tag = line_trimmed.to_string();
             for tag in DICTIONARIES {
                 no_tag = no_tag.replace(tag, "");
             }
+
+            // Parse stripped line
             let first_line = parse_line(&no_tag, None, false);
+
+            // Determine dictionary content type
             let mut dic_type = "bib";
+
             if line_trimmed.contains(DIC_LEX) {
                 dic_type = "lex";
             } else if line_trimmed.contains(DIC_NIS) {
@@ -827,41 +887,62 @@ pub fn parser(input: String) -> Result<Document> {
             } else if line_trimmed.contains(DIC_TOP) {
                 dic_type = "top";
             }
+
+            // Add dictionary unit
             doc.content.push(Content::DictionaryUnit(DictionaryUnit {
                 orig: line_trimmed.to_string(),
                 dic_type: dic_type.to_string(),
             }));
+
+            // If there was other line content, add that
             if let Some(first_line_content) = first_line {
                 doc.content.push(Content::Line(first_line_content));
             }
+        // Doxographical content (?)
         } else if line_trimmed.starts_with(DOX) {
+            // Strip tags
             let mut no_tag = line_trimmed.to_string();
             for tag in DOXOGRAPHICAL {
                 no_tag = no_tag.replace(tag, "");
             }
+
+            // Parse stripped line
             let first_line = parse_line(&no_tag, None, false);
+
+            // Determine doxographical content type
             let mut dox_type = "pos";
             if line_trimmed.contains(DOX_SEC) {
                 dox_type = "sec";
             }
+
+            // Add doxographical item
             doc.content
                 .push(Content::DoxographicalItem(DoxographicalItem {
                     orig: line_trimmed.to_string(),
                     dox_type: dox_type.to_string(),
                 }));
+
+            // If there was other line content, add that
             if let Some(first_line_content) = first_line {
                 doc.content.push(Content::Line(first_line_content));
             }
+        // Biographical item
         } else if bio_pattern.is_match(line_trimmed)
             || line_trimmed.starts_with(BIO)
             || line_trimmed.starts_with(EVENT)
         {
+            // Strip tags
             let mut no_tag = line_trimmed.to_string();
             for tag in BIOS_EVENTS {
                 no_tag = no_tag.replace(tag, "");
             }
+
+            // Parse stripped line
             let first_line = parse_line(&no_tag, None, false);
+
+            // Determine type of biographical item
             let mut be_type = "man";
+
             if line_trimmed.contains(LIST_NAMES_FULL) || line_trimmed.contains(LIST_NAMES) {
                 be_type = "names";
             } else if line_trimmed.contains(BIO_REF_FULL) || line_trimmed.contains(BIO_REF) {
@@ -873,20 +954,26 @@ pub fn parser(input: String) -> Result<Document> {
             } else if line_trimmed.contains(EVENT) {
                 be_type = "event";
             }
+
+            // Add biographical item
             doc.content.push(Content::BioOrEvent(BioOrEvent {
                 orig: line_trimmed.to_string(),
                 be_type: be_type.to_string(),
             }));
+
+            // If there was other line content, add that
             if let Some(first_line_content) = first_line {
                 doc.content.push(Content::Line(first_line_content));
             }
+        // Region
         } else if region_pattern.is_match(line_trimmed) {
             doc.content
                 .push(Content::AdministrativeRegion(AdministrativeRegion {
                     orig: line_trimmed.to_string(),
                 }));
         } else {
-            continue;
+            // Can just no-op this (which I'm sure the compiler does anyway)
+            // continue;
         }
     }
 
@@ -901,9 +988,21 @@ mod tests {
     #[test]
     fn metadata() {
         let full_text = fs::read_to_string("test.md").unwrap();
-        let text_parsed = parser(full_text).unwrap();
+        let mut partial_text = String::new();
+
+        // Save time by taking the first 100 lines of the test file
+        for (i, line) in full_text.lines().enumerate() {
+            if i > 99 {
+                break;
+            }
+            partial_text += line;
+            partial_text += "\n";
+        }
+
+        let text_parsed = parser(partial_text).unwrap();
         let simple_metadata = text_parsed.simple_metadata;
 
+        assert_eq!(simple_metadata.len(), 33);
         assert_eq!(simple_metadata[1], "000.SortField	:: Shamela_0023833");
         assert_eq!(
             simple_metadata[simple_metadata.len() - 1],
@@ -919,6 +1018,7 @@ mod tests {
         let line_parsed = parse_line(line, None, false).unwrap();
         let parts = line_parsed.parts;
 
+        // Testing specific fields like this will not be easy in Rust
         if let LinePart::TextPart(TextPart { text }) = &parts[3] {
             assert_eq!(text, r###"واسط.. 1"018: نزيل: "###);
         } else {
