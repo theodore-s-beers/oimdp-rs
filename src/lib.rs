@@ -1,6 +1,9 @@
 use anyhow::{anyhow, Result};
 use regex::Regex;
 
+mod tags;
+use crate::tags::*;
+
 // Document
 
 pub struct Document {
@@ -190,92 +193,6 @@ pub struct NamedEntityText {
 pub struct TextPart {
     pub text: String,
 }
-
-// Tag constants
-
-const META: &str = "#META#";
-const META_END: &str = "#META#Header#End#";
-const PAGE: &str = "PageV";
-const RWY: &str = "# $RWY$";
-const LINE: &str = "~~";
-
-const HEMI: &str = "%~%";
-const MILESTONE: &str = "Milestone300";
-const MATN: &str = "@MATN@";
-const HUKM: &str = "@HUKM@";
-const ROUTE_FROM: &str = "#$#FROM";
-const ROUTE_TOWA: &str = "#$#TOWA";
-const ROUTE_DIST: &str = "#$#DIST";
-
-const PHRASE_LV_TAGS: [&str; 7] = [
-    HEMI, MILESTONE, MATN, HUKM, ROUTE_FROM, ROUTE_TOWA, ROUTE_DIST,
-];
-
-const YEAR_BIRTH: &str = "@YB";
-const YEAR_DEATH: &str = "@YD";
-const YEAR_OTHER: &str = "@YY";
-const YEAR_AGE: &str = "@YA";
-
-const SRC: &str = "@SRC";
-const SOC_FULL: &str = "@SOC";
-const SOC: &str = "@S";
-const TOP_FULL: &str = "@TOP";
-const TOP: &str = "@T";
-const PER_FULL: &str = "@PER";
-const PER: &str = "@P";
-
-const EDITORIAL: &str = "### |EDITOR|";
-
-const HEADER1: &str = "### |";
-const HEADER2: &str = "### ||";
-const HEADER3: &str = "### |||";
-const HEADER4: &str = "### ||||";
-const HEADER5: &str = "### |||||";
-const HEADERS: [&str; 5] = [HEADER5, HEADER4, HEADER3, HEADER2, HEADER1];
-
-const DIC: &str = "### $DIC_";
-
-const DIC_NIS: &str = "### $DIC_NIS$";
-const DIC_TOP: &str = "### $DIC_TOP$";
-const DIC_LEX: &str = "### $DIC_LEX$";
-const DIC_BIB: &str = "### $DIC_BIB$";
-const DICTIONARIES: [&str; 4] = [DIC_NIS, DIC_TOP, DIC_LEX, DIC_BIB];
-
-const DOX: &str = "### $DOX_";
-
-const DOX_POS: &str = "### $DOX_POS$";
-const DOX_SEC: &str = "### $DOX_SEC$";
-const DOXOGRAPHICAL: [&str; 2] = [DOX_POS, DOX_SEC];
-
-const BIO: &str = "### $BIO_";
-const EVENT: &str = "### @";
-
-const LIST_NAMES: &str = "### $$$$";
-const LIST_NAMES_FULL: &str = "### $BIO_NLI$";
-const BIO_MAN: &str = "### $";
-const BIO_MAN_FULL: &str = "### $BIO_MAN$";
-const BIO_WOM: &str = "### $$";
-const BIO_WOM_FULL: &str = "### $BIO_WOM$";
-const BIO_REF: &str = "### $$$";
-const BIO_REF_FULL: &str = "### $BIO_REF$";
-const EVENT_FULL: &str = "### $CHR_EVE$";
-const LIST_EVENTS: &str = "### @ RAW";
-const LIST_EVENTS_FULL: &str = "### $CHR_RAW$";
-
-const BIOS_EVENTS: [&str; 12] = [
-    LIST_NAMES_FULL,
-    LIST_NAMES,
-    BIO_WOM_FULL,
-    BIO_MAN_FULL,
-    BIO_REF_FULL,
-    LIST_EVENTS,
-    EVENT,
-    BIO_REF,
-    BIO_WOM,
-    BIO_MAN,
-    EVENT_FULL,
-    LIST_EVENTS_FULL,
-];
 
 // Macro
 
