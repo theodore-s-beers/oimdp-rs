@@ -798,30 +798,27 @@ mod tests {
     });
 
     #[test]
-    fn combined() {
+    fn heading_five() {
         let content = &PARSED.content;
 
-        // Test a route or distance line
-        if let Content::Line(Line {
-            text_only: _,
-            parts,
-            line_type,
-        }) = &content[49]
+        // Test a level 5 heading
+        if let Content::SectionHeader(SectionHeader {
+            orig: _,
+            value,
+            level,
+        }) = &content[54]
         {
-            assert!(matches!(line_type, LineType::RouteOrDistance));
-            assert!(matches!(parts[0], LinePart::RouteFrom));
-            assert!(matches!(parts[2], LinePart::RouteTowa));
-
-            if let LinePart::TextPart(TextPart { text }) = &parts[5] {
-                assert_eq!(text, "distance_as_recorded");
-            } else {
-                panic!("Not the type that we were expecting");
-            }
+            assert_eq!(value, "(نهج ابن هشام في هذا الكتاب) :");
+            assert_eq!(*level, 5);
         } else {
             panic!("Not the type that we were expecting");
         }
+    }
 
-        // Test a level 1 heading
+    #[test]
+    fn heading_one() {
+        let content = &PARSED.content;
+
         if let Content::SectionHeader(SectionHeader {
             orig: _,
             value,
@@ -836,41 +833,45 @@ mod tests {
         } else {
             panic!("Not the type that we were expecting");
         }
+    }
 
-        // Test a level 3 heading
-        if let Content::SectionHeader(SectionHeader {
-            orig: _,
-            value,
-            level,
-        }) = &content[52]
-        {
-            assert_eq!(value, "(نهج ابن هشام في هذا الكتاب) :");
-            assert_eq!(*level, 3);
+    #[test]
+    fn line_parts() {
+        let line = r#"~~ الصلاة والسلام، وما يضاف إلى ذلك @SOC02 نزيل: 1"018: واسط.. شيخ: معمر"#;
+
+        let line_parsed = parse_line(line, None, false).unwrap();
+        let parts = line_parsed.parts;
+
+        if let LinePart::TextPart(TextPart { text }) = &parts[3] {
+            assert_eq!(text, r#"واسط.. 1"018: نزيل: "#);
         } else {
             panic!("Not the type that we were expecting");
         }
+    }
 
-        // Test a level 5 heading
-        if let Content::SectionHeader(SectionHeader {
-            orig: _,
-            value,
-            level,
-        }) = &content[54]
-        {
-            assert_eq!(value, "(نهج ابن هشام في هذا الكتاب) :");
-            assert_eq!(*level, 5);
-        } else {
-            panic!("Not the type that we were expecting");
-        }
+    #[test]
+    fn metadata() {
+        let text_parsed = &PARSED;
+        let simple_metadata = &text_parsed.simple_metadata;
 
-        // Test a line of poetry
+        assert_eq!(simple_metadata.len(), 33);
+        assert_eq!(simple_metadata[1], "000.SortField	:: Shamela_0023833");
+        assert_eq!(
+            simple_metadata[simple_metadata.len() - 1],
+            "999.MiscINFO	:: NODATA"
+        );
+    }
+
+    #[test]
+    fn poetry() {
+        let content = &PARSED.content;
+
         if let Content::Line(Line {
             text_only: _,
             parts,
             line_type,
         }) = &content[55]
         {
-            // This seems to be the most concise way of testing the enum variant
             assert!(matches!(line_type, LineType::Verse));
 
             if let LinePart::TextPart(TextPart { text }) = &parts[0] {
@@ -896,40 +897,35 @@ mod tests {
     }
 
     #[test]
-    fn line_parts() {
-        let line =
-            r###"~~ الصلاة والسلام، وما يضاف إلى ذلك @SOC02 نزيل: 1"018: واسط.. شيخ: معمر"###;
+    fn riwayat() {
+        let content = &PARSED.content;
 
-        let line_parsed = parse_line(line, None, false).unwrap();
-        let parts = line_parsed.parts;
-
-        // Testing specific fields like this will not be easy in Rust
-        if let LinePart::TextPart(TextPart { text }) = &parts[3] {
-            assert_eq!(text, r###"واسط.. 1"018: نزيل: "###);
+        if let Content::Paragraph(Paragraph { orig: _, para_type }) = &content[46] {
+            assert!(matches!(para_type, ParaType::Riwayat));
         } else {
             panic!("Not the type that we were expecting");
         }
     }
 
     #[test]
-    fn metadata() {
-        let text_parsed = &PARSED;
-        let simple_metadata = &text_parsed.simple_metadata;
-
-        assert_eq!(simple_metadata.len(), 33);
-        assert_eq!(simple_metadata[1], "000.SortField	:: Shamela_0023833");
-        assert_eq!(
-            simple_metadata[simple_metadata.len() - 1],
-            "999.MiscINFO	:: NODATA"
-        );
-    }
-
-    #[test]
-    fn riwayat() {
+    fn route_or_distance() {
         let content = &PARSED.content;
 
-        if let Content::Paragraph(Paragraph { orig: _, para_type }) = &content[46] {
-            assert!(matches!(para_type, ParaType::Riwayat));
+        if let Content::Line(Line {
+            text_only: _,
+            parts,
+            line_type,
+        }) = &content[49]
+        {
+            assert!(matches!(line_type, LineType::RouteOrDistance));
+            assert!(matches!(parts[0], LinePart::RouteFrom));
+            assert!(matches!(parts[2], LinePart::RouteTowa));
+
+            if let LinePart::TextPart(TextPart { text }) = &parts[5] {
+                assert_eq!(text, "distance_as_recorded");
+            } else {
+                panic!("Not the type that we were expecting");
+            }
         } else {
             panic!("Not the type that we were expecting");
         }
