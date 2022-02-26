@@ -51,9 +51,12 @@ fn split_keep<'a>(re: &Regex, text: &'a str) -> Vec<&'a str> {
 fn remove_phrase_lv_tags(line: String) -> String {
     let mut text_only = line;
 
+    // First strip tags for which regex is not needed
     for tag in PHRASE_LV_TAGS {
         text_only = text_only.replace(tag, "");
     }
+
+    // Then use this nasty regex to strip the remainder
 
     let yikes = regex!(
         r"(?x)
@@ -80,7 +83,7 @@ fn remove_phrase_lv_tags(line: String) -> String {
     text_only
 }
 
-// Line parsing function (needs review)
+// Line parsing function
 
 fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Option<Line> {
     // Remove initial line marker
@@ -100,7 +103,7 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
     // If any first_token was indicated, add an Isnad part to the line
     // This is weird right now because the only kind of first_token that has been implemented
     // is Isnad. So I made the function argument into a bool for simplicity.
-    // But I still don't understand what this is supposed to accomplish
+    // But I still don't understand what this is supposed to accomplish...
     if first_token {
         parts.push(LinePart::Isnad(Isnad {}))
     }
@@ -138,40 +141,34 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
     // This requires a custom function in Rust, unlike in Python
     let tokens = split_keep(ungodly, line);
 
+    // More regex for the upcoming loop
+
     let open_tag_custom_pattern_grouped = regex!("^@([^@]+?)@([^_@]+?)_([^_@]+?)(_([^_@]+?))?@");
     let open_tag_auto_pattern_grouped =
         regex!("^@([A-Z]{3})@([A-Z]{3,})@([A-Za-z]+)@(-@([0tf][ftalmr])@)?");
 
     let page_pattern = regex!(r"PageV(\d+)P(\d+)");
 
-    /* These were temporary tests to make sure certain regexes worked properly
-    let custom_pattern_test = open_tag_custom_pattern_grouped
-        .captures("@USER@CAT_SUBCAT_SUBSUBCAT@")
-        .unwrap();
-
-    assert_eq!(&custom_pattern_test[1], "USER");
-    assert_eq!(&custom_pattern_test[2], "CAT");
-    assert_eq!(&custom_pattern_test[3], "SUBCAT");
-    assert_eq!(&custom_pattern_test[5], "SUBSUBCAT");
-
-    let auto_pattern_test = open_tag_auto_pattern_grouped
-        .captures("@RES@TYPE@Category@-@fr@")
-        .unwrap();
-
-    assert_eq!(&auto_pattern_test[1], "RES");
-    assert_eq!(&auto_pattern_test[2], "TYPE");
-    assert_eq!(&auto_pattern_test[3], "Category");
-    assert_eq!(&auto_pattern_test[5], "fr");
-    */
-
+    // When we come upon a tag for a "named entity," we can set this variable to indicate how
+    // many of the *following* words (i.e., how much of the next token, I guess) to set aside
+    // as the text of that identity
+    // I can't make it work in Rust quite like it does in Python, though
     let mut include_words: u32 = 0;
 
+    // Iterate over line tokens
+    // Basically, a token could be a tag, or any text falling between two tags
+    // We have already split the line on tags as separators, while keeping those tags
     for token in tokens {
+        // Again, let's start by trimming whitespace, and use this version henceforth
+        // This is not done in the Python library, but I prefer it
         let token_trimmed = token.trim();
 
+        // I guess this would mean a content-less line? How would that happen at this point?
         if token_trimmed.is_empty() {
             continue;
         }
+
+        // Capture "open tag custom" or "open tag auto" (whatever that means)
 
         let mut opentag_captures: Option<regex::Captures> = None;
         let mut opentagauto_captures: Option<regex::Captures> = None;
@@ -181,16 +178,20 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             opentagauto_captures = open_tag_auto_pattern_grouped.captures(token_trimmed);
         }
 
+        // Here begin the if/else branches that take up the rest of the function
+        // Page number
         if token_trimmed.contains(PAGE) {
             let page_captures = page_pattern.captures(token_trimmed);
+
             if let Some(page_matches) = page_captures {
                 let vol = page_matches[1].to_string();
                 let page = page_matches[2].to_string();
 
                 parts.push(LinePart::PageNumber(PageNumber { vol, page }));
             } else {
-                // They raise an exception here...
+                // An exception is raised here in the Python library; I haven't done anything
             }
+        // "Open tag custom" (?)
         } else if let Some(opentag_matches) = opentag_captures {
             let user = opentag_matches[1].to_string();
             let t_type = opentag_matches[2].to_string();
@@ -203,7 +204,8 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
                 t_type,
                 t_subtype,
                 t_subsubtype,
-            }))
+            }));
+        // "Open tag auto" (?)
         } else if let Some(opentagauto_matches) = opentagauto_captures {
             let resp = opentagauto_matches[1].to_string();
             let t_type = opentagauto_matches[2].to_string();
@@ -216,23 +218,31 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
                 t_type,
                 category,
                 review,
-            }))
+            }));
+        // Hemistich
         } else if token_trimmed.contains(HEMI) {
             parts.push(LinePart::Hemistich(Hemistich {
                 orig: token_trimmed.to_string(),
             }));
+        // "Milestone" (used to break up texts into manageable units)
         } else if token_trimmed.contains(MILESTONE) {
             parts.push(LinePart::Milestone(Milestone {}));
+        // Matn (?)
         } else if token_trimmed.contains(MATN) {
             parts.push(LinePart::Matn(Matn {}));
+        // Ḥukm (?)
         } else if token_trimmed.contains(HUKM) {
             parts.push(LinePart::Hukm(Hukm {}));
+        // Route from
         } else if token_trimmed.contains(ROUTE_FROM) {
             parts.push(LinePart::RouteFrom(RouteFrom {}));
+        // Route toward
         } else if token_trimmed.contains(ROUTE_TOWA) {
             parts.push(LinePart::RouteTowa(RouteTowa {}));
+        // Route distance (?)
         } else if token_trimmed.contains(ROUTE_DIST) {
             parts.push(LinePart::RouteDist(RouteDist {}));
+        // Year of birth
         } else if token_trimmed.contains(YEAR_BIRTH) {
             let orig = token_trimmed.to_string();
             let value = token_trimmed.trim_start_matches(YEAR_BIRTH).to_string();
@@ -243,6 +253,7 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
                 value,
                 date_type,
             }));
+        // Year of death
         } else if token_trimmed.contains(YEAR_DEATH) {
             let orig = token_trimmed.to_string();
             let value = token_trimmed.trim_start_matches(YEAR_DEATH).to_string();
@@ -253,6 +264,7 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
                 value,
                 date_type,
             }));
+        // Other year
         } else if token_trimmed.contains(YEAR_OTHER) {
             let orig = token_trimmed.to_string();
             let value = token_trimmed.trim_start_matches(YEAR_OTHER).to_string();
@@ -263,11 +275,13 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
                 value,
                 date_type,
             }));
+        // Age (?)
         } else if token_trimmed.contains(YEAR_AGE) {
             let orig = token_trimmed.to_string();
             let value = token_trimmed.trim_start_matches(YEAR_AGE).to_string();
 
-            parts.push(LinePart::Age(Age { orig, value }))
+            parts.push(LinePart::Age(Age { orig, value }));
+        // Source
         } else if token_trimmed.contains(SRC) {
             // This should yield a string representation of a two-digit number
             let val = token_trimmed.trim_start_matches(SRC);
@@ -293,6 +307,7 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
                 extent,
                 ne_type: "src".to_string(),
             }));
+        // Not sure what SOC means
         } else if token_trimmed.starts_with(SOC_FULL) {
             let val = token_trimmed.trim_start_matches(SOC_FULL);
             let mut iter = val.chars();
@@ -311,6 +326,7 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
                 extent,
                 ne_type: "soc".to_string(),
             }));
+        // Again SOC...
         } else if token_trimmed.starts_with(SOC) {
             let val = token_trimmed.trim_start_matches(SOC);
             let mut iter = val.chars();
@@ -329,6 +345,7 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
                 extent,
                 ne_type: "soc".to_string(),
             }));
+        // Topological entity (I think)
         } else if token_trimmed.starts_with(TOP_FULL) {
             let val = token_trimmed.trim_start_matches(TOP_FULL);
             let mut iter = val.chars();
@@ -347,6 +364,7 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
                 extent,
                 ne_type: "top".to_string(),
             }));
+        // Again topological entity
         } else if token_trimmed.starts_with(TOP) {
             let val = token_trimmed.trim_start_matches(TOP);
             let mut iter = val.chars();
@@ -365,6 +383,7 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
                 extent,
                 ne_type: "top".to_string(),
             }));
+        // Person (?)
         } else if token_trimmed.starts_with(PER_FULL) {
             let val = token_trimmed.trim_start_matches(PER_FULL);
             let mut iter = val.chars();
@@ -383,6 +402,7 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
                 extent,
                 ne_type: "per".to_string(),
             }));
+        // Again person
         } else if token_trimmed.starts_with(PER) {
             let val = token_trimmed.trim_start_matches(PER);
             let mut iter = val.chars();
@@ -402,6 +422,15 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
                 ne_type: "per".to_string(),
             }));
         } else if include_words > 0 {
+            // This block becomes active if we assigned a new value to include_words
+            // That would mean that there is some NamedEntity that has been added
+            // The idea, again, is that we take a number of words *after* the tag introducing
+            // the NamedEntity, and, on the following loop iteration, add those words as the
+            // text field of the NamedEntity. I don't see how this can be done in Rust with
+            // static typing, the borrow checker, etc.
+            // So I gave up and changed how things work. We instead add a NamedEntityText object
+            // that should occur just after the NamedEntity object. And we can still capture the
+            // correct number of words.
             let mut entity = String::new();
             let mut rest = String::new();
 
@@ -425,8 +454,11 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
                 parts.push(LinePart::TextPart(TextPart { text: rest }))
             }
 
+            // Reset include_words to 0
             include_words = 0;
         } else {
+            // If we made it to this point and no tag or anything else matched,
+            // we can just add it to the line as textual content
             parts.push(LinePart::TextPart(TextPart {
                 text: token_trimmed.to_string(),
             }))
@@ -435,12 +467,16 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
 
     // Set up return value
 
+    // If a line type was passed in to the function, use it
+    // Otherwise assume normal "line"
     let line_type = if let Some(specified) = kind {
         specified
     } else {
         "line".to_string()
     };
 
+    // I've tried to match the Python library here, in particular using the
+    // "line" variable for the orig field
     let line_struct = Line {
         orig: line.to_string(),
         text_only,
