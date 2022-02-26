@@ -51,7 +51,7 @@ fn split_keep<'a>(re: &Regex, text: &'a str) -> Vec<&'a str> {
 fn remove_phrase_lv_tags(line: String) -> String {
     let mut text_only = line;
 
-    // First strip tags for which regex is not needed
+    // First strip tags that don't involve regex
     for tag in PHRASE_LV_TAGS {
         text_only = text_only.replace(tag, "");
     }
@@ -151,13 +151,13 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
 
     // When we come upon a tag for a "named entity," we can set this variable to indicate how
     // many of the *following* words (i.e., how much of the next token, I guess) to set aside
-    // as the text of that identity
+    // as the text of that entity
     // I can't make it work in Rust quite like it does in Python, though
     let mut include_words: u32 = 0;
 
     // Iterate over line tokens
     // Basically, a token could be a tag, or any text falling between two tags
-    // We have already split the line on tags as separators, while keeping those tags
+    // We've already split the line on tags as separators, while keeping those tags
     for token in tokens {
         // Again, let's start by trimming whitespace, and use this version henceforth
         // This is not done in the Python library, but I prefer it
@@ -179,6 +179,7 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
         }
 
         // Here begin the if/else branches that take up the rest of the function
+
         // Page number
         if token_trimmed.contains(PAGE) {
             let page_captures = page_pattern.captures(token_trimmed);
@@ -425,10 +426,10 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             // This block becomes active if we assigned a new value to include_words
             // That would mean that there is some NamedEntity that has been added
             // The idea, again, is that we take a number of words *after* the tag introducing
-            // the NamedEntity, and, on the following loop iteration, add those words as the
+            // the NamedEntity, and, in the following iteration, add those words as the
             // text field of the NamedEntity. I don't see how this can be done in Rust with
             // static typing, the borrow checker, etc.
-            // So I gave up and changed how things work. We instead add a NamedEntityText object
+            // So I gave up and changed how this works. We instead add a NamedEntityText object
             // that should occur just after the NamedEntity object. And we can still capture the
             // correct number of words.
             let mut entity = String::new();
