@@ -1,5 +1,6 @@
 use anyhow::{anyhow, Result};
-use regex::Regex;
+use once_cell::sync::OnceCell;
+use regex::{Captures, Regex};
 
 mod structures;
 pub use crate::structures::*;
@@ -11,8 +12,8 @@ use crate::tags::*;
 
 macro_rules! regex {
     ($re:literal $(,)?) => {{
-        static RE: once_cell::sync::OnceCell<regex::Regex> = once_cell::sync::OnceCell::new();
-        RE.get_or_init(|| regex::Regex::new($re).unwrap())
+        static RE: OnceCell<Regex> = OnceCell::new();
+        RE.get_or_init(|| Regex::new($re).unwrap())
     }};
 }
 
@@ -176,8 +177,8 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
 
         // Capture "open tag custom" or "open tag auto" (whatever that means)
 
-        let mut opentag_captures: Option<regex::Captures> = None;
-        let mut opentagauto_captures: Option<regex::Captures> = None;
+        let mut opentag_captures: Option<Captures> = None;
+        let mut opentagauto_captures: Option<Captures> = None;
 
         if token_trimmed.starts_with('@') {
             opentag_captures = open_tag_custom_pattern_grouped.captures(token_trimmed);
@@ -786,24 +787,20 @@ pub fn parser(input: String) -> Result<Document> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use once_cell::sync::Lazy;
     use std::fs;
+
+    static PARSED: Lazy<Document> = Lazy::new(|| {
+        let full_text = fs::read_to_string("test.md").unwrap();
+        let text_parsed = parser(full_text).unwrap();
+
+        text_parsed
+    });
 
     #[test]
     fn metadata() {
-        let full_text = fs::read_to_string("test.md").unwrap();
-        let mut partial_text = String::new();
-
-        // Save time by taking the first 100 lines of the test file
-        for (i, line) in full_text.lines().enumerate() {
-            if i > 99 {
-                break;
-            }
-            partial_text += line;
-            partial_text += "\n";
-        }
-
-        let text_parsed = parser(partial_text).unwrap();
-        let simple_metadata = text_parsed.simple_metadata;
+        let text_parsed = &PARSED;
+        let simple_metadata = &text_parsed.simple_metadata;
 
         assert_eq!(simple_metadata.len(), 33);
         assert_eq!(simple_metadata[1], "000.SortField	:: Shamela_0023833");
@@ -830,9 +827,68 @@ mod tests {
     }
 
     #[test]
+    fn riwayat() {
+        let text_parsed = &PARSED;
+
+        if let Content::Paragraph(Paragraph { orig: _, para_type }) = &text_parsed.content[46] {
+            assert!(matches!(para_type, ParaType::Riwayat));
+        } else {
+            panic!("Not the type that we were expecting");
+        }
+    }
+
+    #[test]
     fn combined() {
-        let full_text = fs::read_to_string("test.md").unwrap();
-        let text_parsed = parser(full_text).unwrap();
+        let text_parsed = &PARSED;
+
+        // Test a route or distance line
+        if let Content::Line(Line {
+            text_only: _,
+            parts,
+            line_type,
+        }) = &text_parsed.content[49]
+        {
+            assert!(matches!(line_type, LineType::RouteOrDistance));
+            assert!(matches!(parts[0], LinePart::RouteFrom));
+            assert!(matches!(parts[2], LinePart::RouteTowa));
+
+            if let LinePart::TextPart(TextPart { text }) = &parts[5] {
+                assert_eq!(text, "distance_as_recorded");
+            } else {
+                panic!("Not the type that we were expecting");
+            }
+        } else {
+            panic!("Not the type that we were expecting");
+        }
+
+        // Test a level 1 heading
+        if let Content::SectionHeader(SectionHeader {
+            orig: _,
+            value,
+            level,
+        }) = &text_parsed.content[50]
+        {
+            assert_eq!(
+                value,
+                "ذكر سرد النسب الزكي من محمد صلى الله عليه وآله وسلم، إلى آدم عليه السلام"
+            );
+            assert_eq!(*level, 1);
+        } else {
+            panic!("Not the type that we were expecting");
+        }
+
+        // Test a level 3 heading
+        if let Content::SectionHeader(SectionHeader {
+            orig: _,
+            value,
+            level,
+        }) = &text_parsed.content[52]
+        {
+            assert_eq!(value, "(نهج ابن هشام في هذا الكتاب) :");
+            assert_eq!(*level, 3);
+        } else {
+            panic!("Not the type that we were expecting");
+        }
 
         // Test a level 5 heading
         if let Content::SectionHeader(SectionHeader {
@@ -855,7 +911,7 @@ mod tests {
         }) = &text_parsed.content[55]
         {
             // This seems to be the most concise way of testing the enum variant
-            assert!(matches!(line_type, &LineType::Verse));
+            assert!(matches!(line_type, LineType::Verse));
 
             if let LinePart::TextPart(TextPart { text }) = &parts[0] {
                 assert_eq!(text, "وجمع العرب تحت لواء الرسول محمد عليه الصلاة");
