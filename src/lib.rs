@@ -806,4 +806,33 @@ mod tests {
             panic!("Not the type that we were expecting");
         }
     }
+
+    #[test]
+    fn combined() {
+        let full_text = fs::read_to_string("test.md").unwrap();
+        let text_parsed = parser(full_text).unwrap();
+
+        if let Content::SectionHeader(SectionHeader {
+            orig: _,
+            value: _,
+            level,
+        }) = &text_parsed.content[54]
+        {
+            assert_eq!(*level, 5);
+        } else {
+            panic!("Not the type that we were expecting");
+        }
+
+        if let Content::Line(Line {
+            orig: _,
+            text_only: _,
+            parts: _,
+            line_type,
+        }) = &text_parsed.content[55]
+        {
+            assert_eq!(line_type, "verse");
+        } else {
+            panic!("Not the type that we were expecting");
+        }
+    }
 }
