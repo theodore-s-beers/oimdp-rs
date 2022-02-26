@@ -78,7 +78,7 @@ fn remove_phrase_lv_tags(line: String) -> String {
         )"
     );
 
-    text_only = yikes.replace_all(&text_only, "").to_string();
+    text_only = yikes.replace_all(&text_only, "").into();
 
     text_only
 }
@@ -90,7 +90,7 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
     let line = tagged_line.trim_start_matches(LINE);
 
     // Remove phrase-level tags (whatever that means)
-    let text_only = remove_phrase_lv_tags(line.to_string());
+    let text_only = remove_phrase_lv_tags(line.into());
 
     // Return early if there's nothing left at this point
     if text_only.is_empty() {
@@ -185,8 +185,8 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             let page_captures = page_pattern.captures(token_trimmed);
 
             if let Some(page_matches) = page_captures {
-                let vol = page_matches[1].to_string();
-                let page = page_matches[2].to_string();
+                let vol = page_matches[1].into();
+                let page = page_matches[2].into();
 
                 parts.push(LinePart::PageNumber(PageNumber { vol, page }));
             } else {
@@ -194,13 +194,13 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             }
         // "Open tag custom" (?)
         } else if let Some(opentag_matches) = opentag_captures {
-            let user = opentag_matches[1].to_string();
-            let t_type = opentag_matches[2].to_string();
-            let t_subtype = opentag_matches[3].to_string();
-            let t_subsubtype = opentag_matches[5].to_string();
+            let user = opentag_matches[1].into();
+            let t_type = opentag_matches[2].into();
+            let t_subtype = opentag_matches[3].into();
+            let t_subsubtype = opentag_matches[5].into();
 
             parts.push(LinePart::OpenTagUser(OpenTagUser {
-                orig: token_trimmed.to_string(),
+                orig: token_trimmed.into(),
                 user,
                 t_type,
                 t_subtype,
@@ -208,13 +208,13 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             }));
         // "Open tag auto" (?)
         } else if let Some(opentagauto_matches) = opentagauto_captures {
-            let resp = opentagauto_matches[1].to_string();
-            let t_type = opentagauto_matches[2].to_string();
-            let category = opentagauto_matches[3].to_string();
-            let review = opentagauto_matches[5].to_string();
+            let resp = opentagauto_matches[1].into();
+            let t_type = opentagauto_matches[2].into();
+            let category = opentagauto_matches[3].into();
+            let review = opentagauto_matches[5].into();
 
             parts.push(LinePart::OpenTagAuto(OpenTagAuto {
-                orig: token_trimmed.to_string(),
+                orig: token_trimmed.into(),
                 resp,
                 t_type,
                 category,
@@ -223,7 +223,7 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
         // Hemistich
         } else if token_trimmed.contains(HEMI) {
             parts.push(LinePart::Hemistich(Hemistich {
-                orig: token_trimmed.to_string(),
+                orig: token_trimmed.into(),
             }));
         // "Milestone" (used to break up texts into manageable units)
         } else if token_trimmed.contains(MILESTONE) {
@@ -245,9 +245,9 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             parts.push(LinePart::RouteDist(RouteDist {}));
         // Year of birth
         } else if token_trimmed.contains(YEAR_BIRTH) {
-            let orig = token_trimmed.to_string();
-            let value = token_trimmed.trim_start_matches(YEAR_BIRTH).to_string();
-            let date_type = "birth".to_string();
+            let orig = token_trimmed.into();
+            let value = token_trimmed.trim_start_matches(YEAR_BIRTH).into();
+            let date_type = "birth".into();
 
             parts.push(LinePart::Date(Date {
                 orig,
@@ -256,9 +256,9 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             }));
         // Year of death
         } else if token_trimmed.contains(YEAR_DEATH) {
-            let orig = token_trimmed.to_string();
-            let value = token_trimmed.trim_start_matches(YEAR_DEATH).to_string();
-            let date_type = "death".to_string();
+            let orig = token_trimmed.into();
+            let value = token_trimmed.trim_start_matches(YEAR_DEATH).into();
+            let date_type = "death".into();
 
             parts.push(LinePart::Date(Date {
                 orig,
@@ -267,9 +267,9 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             }));
         // Other year
         } else if token_trimmed.contains(YEAR_OTHER) {
-            let orig = token_trimmed.to_string();
-            let value = token_trimmed.trim_start_matches(YEAR_OTHER).to_string();
-            let date_type = "other".to_string();
+            let orig = token_trimmed.into();
+            let value = token_trimmed.trim_start_matches(YEAR_OTHER).into();
+            let date_type = "other".into();
 
             parts.push(LinePart::Date(Date {
                 orig,
@@ -278,8 +278,8 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             }));
         // Age (?)
         } else if token_trimmed.contains(YEAR_AGE) {
-            let orig = token_trimmed.to_string();
-            let value = token_trimmed.trim_start_matches(YEAR_AGE).to_string();
+            let orig = token_trimmed.into();
+            let value = token_trimmed.trim_start_matches(YEAR_AGE).into();
 
             parts.push(LinePart::Age(Age { orig, value }));
         // Source
@@ -303,10 +303,10 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             include_words = extent;
 
             parts.push(LinePart::NamedEntity(NamedEntity {
-                orig: token_trimmed.to_string(),
+                orig: token_trimmed.into(),
                 prefix,
                 extent,
-                ne_type: "src".to_string(),
+                ne_type: "src".into(),
             }));
         // Not sure what SOC means
         } else if token_trimmed.starts_with(SOC_FULL) {
@@ -322,10 +322,10 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             include_words = extent;
 
             parts.push(LinePart::NamedEntity(NamedEntity {
-                orig: token_trimmed.to_string(),
+                orig: token_trimmed.into(),
                 prefix,
                 extent,
-                ne_type: "soc".to_string(),
+                ne_type: "soc".into(),
             }));
         // Again SOC...
         } else if token_trimmed.starts_with(SOC) {
@@ -341,10 +341,10 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             include_words = extent;
 
             parts.push(LinePart::NamedEntity(NamedEntity {
-                orig: token_trimmed.to_string(),
+                orig: token_trimmed.into(),
                 prefix,
                 extent,
-                ne_type: "soc".to_string(),
+                ne_type: "soc".into(),
             }));
         // Topological entity (I think)
         } else if token_trimmed.starts_with(TOP_FULL) {
@@ -360,10 +360,10 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             include_words = extent;
 
             parts.push(LinePart::NamedEntity(NamedEntity {
-                orig: token_trimmed.to_string(),
+                orig: token_trimmed.into(),
                 prefix,
                 extent,
-                ne_type: "top".to_string(),
+                ne_type: "top".into(),
             }));
         // Again topological entity
         } else if token_trimmed.starts_with(TOP) {
@@ -379,10 +379,10 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             include_words = extent;
 
             parts.push(LinePart::NamedEntity(NamedEntity {
-                orig: token_trimmed.to_string(),
+                orig: token_trimmed.into(),
                 prefix,
                 extent,
-                ne_type: "top".to_string(),
+                ne_type: "top".into(),
             }));
         // Person (?)
         } else if token_trimmed.starts_with(PER_FULL) {
@@ -398,10 +398,10 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             include_words = extent;
 
             parts.push(LinePart::NamedEntity(NamedEntity {
-                orig: token_trimmed.to_string(),
+                orig: token_trimmed.into(),
                 prefix,
                 extent,
-                ne_type: "per".to_string(),
+                ne_type: "per".into(),
             }));
         // Again person
         } else if token_trimmed.starts_with(PER) {
@@ -417,10 +417,10 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             include_words = extent;
 
             parts.push(LinePart::NamedEntity(NamedEntity {
-                orig: token_trimmed.to_string(),
+                orig: token_trimmed.into(),
                 prefix,
                 extent,
-                ne_type: "per".to_string(),
+                ne_type: "per".into(),
             }));
         } else if include_words > 0 {
             // This block becomes active if we assigned a new value to include_words
@@ -461,7 +461,7 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             // If we made it to this point and no tag or anything else matched,
             // we can just add it to the line as textual content
             parts.push(LinePart::TextPart(TextPart {
-                text: token_trimmed.to_string(),
+                text: token_trimmed.into(),
             }))
         }
     }
@@ -473,13 +473,13 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
     let line_type = if let Some(specified) = kind {
         specified
     } else {
-        "line".to_string()
+        "line".into()
     };
 
     // I've tried to match the Python library here, in particular using the
     // "line" variable for the orig field
     let line_struct = Line {
-        orig: line.to_string(),
+        orig: line.into(),
         text_only,
         parts,
         line_type,
@@ -514,7 +514,7 @@ pub fn parser(input: String) -> Result<Document> {
 
         // Check for magic value
         if i == 0 && line_trimmed.starts_with("######OpenITI#") {
-            doc.magic_value = line_trimmed.to_string();
+            doc.magic_value = line_trimmed.into();
 
             // Need to specify continue here; but everything that follows is if/else
             continue;
@@ -533,14 +533,14 @@ pub fn parser(input: String) -> Result<Document> {
             }
 
             // Much trimming!
-            let value = line_trimmed.trim_start_matches(META).trim().to_string();
+            let value = line_trimmed.trim_start_matches(META).trim().into();
             doc.simple_metadata.push(value);
         // Page number (not sure why this would happen)
         } else if line_trimmed.starts_with(PAGE) {
             // Try to capture volume and page numbers
             if let Some(cap) = page_pattern.captures(line_trimmed) {
-                let vol = cap[1].to_string();
-                let page = cap[2].to_string();
+                let vol = cap[1].into();
+                let page = cap[2].into();
 
                 doc.content
                     .push(Content::PageNumber(PageNumber { vol, page }));
@@ -551,8 +551,8 @@ pub fn parser(input: String) -> Result<Document> {
         } else if line_trimmed.starts_with(RWY) {
             // First add the whole line
             doc.content.push(Content::Paragraph(Paragraph {
-                orig: line_trimmed.to_string(),
-                para_type: "riwayat".to_string(),
+                orig: line_trimmed.into(),
+                para_type: "riwayat".into(),
             }));
 
             // Then parse everything after the riwāya tag
@@ -564,7 +564,7 @@ pub fn parser(input: String) -> Result<Document> {
             }
         // Route from
         } else if line_trimmed.starts_with(ROUTE_FROM) {
-            let kind = "route_or_distance".to_string();
+            let kind = "route_or_distance".into();
             let parsed_line = parse_line(line_trimmed, Some(kind), false);
 
             if let Some(parsed_line_content) = parsed_line {
@@ -572,11 +572,11 @@ pub fn parser(input: String) -> Result<Document> {
             }
         // Morphological pattern
         } else if let Some(cap) = morpho_pattern.captures(line_trimmed) {
-            let category = cap[1].to_string();
+            let category = cap[1].into();
 
             doc.content
                 .push(Content::MorphologicalPattern(MorphologicalPattern {
-                    orig: line_trimmed.to_string(),
+                    orig: line_trimmed.into(),
                     category,
                 }));
         // Paragraph
@@ -586,7 +586,7 @@ pub fn parser(input: String) -> Result<Document> {
 
             // If line contains hemistich marker (which can occur in the middle)...
             if line_trimmed.contains(HEMI) {
-                let kind = "verse".to_string();
+                let kind = "verse".into();
                 let verse_parsed = parse_line(no_marker, Some(kind), false);
 
                 if let Some(verse_content) = verse_parsed {
@@ -594,8 +594,8 @@ pub fn parser(input: String) -> Result<Document> {
                 }
             } else {
                 doc.content.push(Content::Paragraph(Paragraph {
-                    orig: line_trimmed.to_string(),
-                    para_type: "para".to_string(),
+                    orig: line_trimmed.into(),
+                    para_type: "para".into(),
                 }));
 
                 let first_line = parse_line(no_marker, None, false);
@@ -613,15 +613,15 @@ pub fn parser(input: String) -> Result<Document> {
         // Editorial (whatever that means)
         } else if line_trimmed.starts_with(EDITORIAL) {
             doc.content.push(Content::Editorial(Editorial {
-                orig: line_trimmed.to_string(),
+                orig: line_trimmed.into(),
             }));
         // Heading
         } else if line_trimmed.starts_with(HEADER1) {
             // I think "value" means the actual heading content, minus the tag
-            let mut value = line_trimmed.to_string();
+            let mut value = line_trimmed.to_owned();
 
             for tag in HEADERS {
-                value = value.replace(tag, "").to_string();
+                value = value.replace(tag, "");
             }
 
             value = remove_phrase_lv_tags(value);
@@ -643,14 +643,14 @@ pub fn parser(input: String) -> Result<Document> {
             }
 
             doc.content.push(Content::SectionHeader(SectionHeader {
-                orig: line_trimmed.to_string(),
+                orig: line_trimmed.into(),
                 value,
                 level,
             }));
         // Dictionary content (?)
         } else if line_trimmed.starts_with(DIC) {
             // Strip tags
-            let mut no_tag = line_trimmed.to_string();
+            let mut no_tag = line_trimmed.to_owned();
             for tag in DICTIONARIES {
                 no_tag = no_tag.replace(tag, "");
             }
@@ -671,8 +671,8 @@ pub fn parser(input: String) -> Result<Document> {
 
             // Add dictionary unit
             doc.content.push(Content::DictionaryUnit(DictionaryUnit {
-                orig: line_trimmed.to_string(),
-                dic_type: dic_type.to_string(),
+                orig: line_trimmed.into(),
+                dic_type: dic_type.into(),
             }));
 
             // If there was other line content, add that
@@ -682,7 +682,7 @@ pub fn parser(input: String) -> Result<Document> {
         // Doxographical content (?)
         } else if line_trimmed.starts_with(DOX) {
             // Strip tags
-            let mut no_tag = line_trimmed.to_string();
+            let mut no_tag = line_trimmed.to_owned();
             for tag in DOXOGRAPHICAL {
                 no_tag = no_tag.replace(tag, "");
             }
@@ -699,8 +699,8 @@ pub fn parser(input: String) -> Result<Document> {
             // Add doxographical item
             doc.content
                 .push(Content::DoxographicalItem(DoxographicalItem {
-                    orig: line_trimmed.to_string(),
-                    dox_type: dox_type.to_string(),
+                    orig: line_trimmed.into(),
+                    dox_type: dox_type.into(),
                 }));
 
             // If there was other line content, add that
@@ -713,7 +713,7 @@ pub fn parser(input: String) -> Result<Document> {
             || line_trimmed.starts_with(EVENT)
         {
             // Strip tags
-            let mut no_tag = line_trimmed.to_string();
+            let mut no_tag = line_trimmed.to_owned();
             for tag in BIOS_EVENTS {
                 no_tag = no_tag.replace(tag, "");
             }
@@ -738,8 +738,8 @@ pub fn parser(input: String) -> Result<Document> {
 
             // Add biographical item
             doc.content.push(Content::BioOrEvent(BioOrEvent {
-                orig: line_trimmed.to_string(),
-                be_type: be_type.to_string(),
+                orig: line_trimmed.into(),
+                be_type: be_type.into(),
             }));
 
             // If there was other line content, add that
@@ -750,7 +750,7 @@ pub fn parser(input: String) -> Result<Document> {
         } else if region_pattern.is_match(line_trimmed) {
             doc.content
                 .push(Content::AdministrativeRegion(AdministrativeRegion {
-                    orig: line_trimmed.to_string(),
+                    orig: line_trimmed.into(),
                 }));
         } else {
             // Can just no-op this (which I'm sure the compiler does anyway)
