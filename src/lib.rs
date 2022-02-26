@@ -250,7 +250,7 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
         } else if token_trimmed.contains(YEAR_BIRTH) {
             let orig = token_trimmed.into();
             let value = token_trimmed.trim_start_matches(YEAR_BIRTH).into();
-            let date_type = "birth".into();
+            let date_type = DateType::Birth;
 
             parts.push(LinePart::Date(Date {
                 orig,
@@ -261,7 +261,7 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
         } else if token_trimmed.contains(YEAR_DEATH) {
             let orig = token_trimmed.into();
             let value = token_trimmed.trim_start_matches(YEAR_DEATH).into();
-            let date_type = "death".into();
+            let date_type = DateType::Death;
 
             parts.push(LinePart::Date(Date {
                 orig,
@@ -272,7 +272,7 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
         } else if token_trimmed.contains(YEAR_OTHER) {
             let orig = token_trimmed.into();
             let value = token_trimmed.trim_start_matches(YEAR_OTHER).into();
-            let date_type = "other".into();
+            let date_type = DateType::Other;
 
             parts.push(LinePart::Date(Date {
                 orig,
@@ -670,20 +670,20 @@ pub fn parser(input: String) -> Result<Document> {
             let first_line = parse_line(&no_tag, None, false);
 
             // Determine dictionary content type
-            let mut dic_type = "bib";
-
-            if line_trimmed.contains(DIC_LEX) {
-                dic_type = "lex";
+            let dic_type = if line_trimmed.contains(DIC_LEX) {
+                DicType::Lex
             } else if line_trimmed.contains(DIC_NIS) {
-                dic_type = "nis";
+                DicType::Nis
             } else if line_trimmed.contains(DIC_TOP) {
-                dic_type = "top";
-            }
+                DicType::Top
+            } else {
+                DicType::Bib
+            };
 
             // Add dictionary unit
             doc.content.push(Content::DictionaryUnit(DictionaryUnit {
                 orig: line_trimmed.into(),
-                dic_type: dic_type.into(),
+                dic_type,
             }));
 
             // If there was other line content, add that
@@ -702,16 +702,17 @@ pub fn parser(input: String) -> Result<Document> {
             let first_line = parse_line(&no_tag, None, false);
 
             // Determine doxographical content type
-            let mut dox_type = "pos";
-            if line_trimmed.contains(DOX_SEC) {
-                dox_type = "sec";
-            }
+            let dox_type = if line_trimmed.contains(DOX_SEC) {
+                DoxType::Sec
+            } else {
+                DoxType::Pos
+            };
 
             // Add doxographical item
             doc.content
                 .push(Content::DoxographicalItem(DoxographicalItem {
                     orig: line_trimmed.into(),
-                    dox_type: dox_type.into(),
+                    dox_type,
                 }));
 
             // If there was other line content, add that
@@ -733,24 +734,25 @@ pub fn parser(input: String) -> Result<Document> {
             let first_line = parse_line(&no_tag, None, false);
 
             // Determine type of biographical item
-            let mut be_type = "man";
-
-            if line_trimmed.contains(LIST_NAMES_FULL) || line_trimmed.contains(LIST_NAMES) {
-                be_type = "names";
-            } else if line_trimmed.contains(BIO_REF_FULL) || line_trimmed.contains(BIO_REF) {
-                be_type = "ref";
-            } else if line_trimmed.contains(BIO_WOM_FULL) || line_trimmed.contains(BIO_WOM) {
-                be_type = "wom";
-            } else if line_trimmed.contains(LIST_EVENTS) {
-                be_type = "events";
-            } else if line_trimmed.contains(EVENT) {
-                be_type = "event";
-            }
+            let be_type =
+                if line_trimmed.contains(LIST_NAMES_FULL) || line_trimmed.contains(LIST_NAMES) {
+                    BeType::Names
+                } else if line_trimmed.contains(BIO_REF_FULL) || line_trimmed.contains(BIO_REF) {
+                    BeType::Ref
+                } else if line_trimmed.contains(BIO_WOM_FULL) || line_trimmed.contains(BIO_WOM) {
+                    BeType::Wom
+                } else if line_trimmed.contains(LIST_EVENTS) {
+                    BeType::Events
+                } else if line_trimmed.contains(EVENT) {
+                    BeType::Event
+                } else {
+                    BeType::Man
+                };
 
             // Add biographical item
             doc.content.push(Content::BioOrEvent(BioOrEvent {
                 orig: line_trimmed.into(),
-                be_type: be_type.into(),
+                be_type,
             }));
 
             // If there was other line content, add that

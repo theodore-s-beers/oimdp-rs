@@ -46,19 +46,43 @@ pub struct SectionHeader {
 #[derive(Clone, Debug)]
 pub struct DictionaryUnit {
     pub orig: String,
-    pub dic_type: String,
+    pub dic_type: DicType,
+}
+
+#[derive(Clone, Debug)]
+pub enum DicType {
+    Nis,
+    Top,
+    Lex,
+    Bib,
 }
 
 #[derive(Clone, Debug)]
 pub struct DoxographicalItem {
     pub orig: String,
-    pub dox_type: String,
+    pub dox_type: DoxType,
+}
+
+#[derive(Clone, Debug)]
+pub enum DoxType {
+    Pos,
+    Sec,
 }
 
 #[derive(Clone, Debug)]
 pub struct BioOrEvent {
     pub orig: String,
-    pub be_type: String,
+    pub be_type: BeType,
+}
+
+#[derive(Clone, Debug)]
+pub enum BeType {
+    Man,
+    Wom,
+    Ref,
+    Names,
+    Event,
+    Events,
 }
 
 // Administrative regions are not yet fully implemented in the Python library
@@ -150,7 +174,14 @@ pub struct Hemistich {
 pub struct Date {
     pub orig: String,
     pub value: String,
-    pub date_type: String,
+    pub date_type: DateType,
+}
+
+#[derive(Clone, Debug)]
+pub enum DateType {
+    Birth,
+    Death,
+    Other,
 }
 
 #[derive(Clone, Debug)]
