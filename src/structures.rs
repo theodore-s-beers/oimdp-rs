@@ -3,7 +3,6 @@
 // Document
 
 pub struct Document {
-    pub orig_text: String,
     pub magic_value: String,
     pub simple_metadata: Vec<String>,
     pub content: Vec<Content>,
@@ -89,7 +88,14 @@ pub struct Line {
     pub orig: String,
     pub text_only: String,
     pub parts: Vec<LinePart>,
-    pub line_type: String,
+    pub line_type: LineType,
+}
+
+#[derive(Clone, Debug)]
+pub enum LineType {
+    Normal,
+    RouteOrDistance,
+    Verse,
 }
 
 // Line parts
@@ -177,15 +183,26 @@ pub struct NamedEntity {
     pub orig: String,
     pub prefix: u32,
     pub extent: u32,
-    pub ne_type: String,
+    pub ne_type: EntityType,
 }
 
 #[derive(Clone, Debug)]
 pub struct NamedEntityText {
     pub text: String,
+    pub ne_type: EntityType,
+}
+
+#[derive(Clone, Debug)]
+pub enum EntityType {
+    Top,
+    Per,
+    Soc,
+    Src,
 }
 
 #[derive(Clone, Debug)]
 pub struct TextPart {
+    // In the Python library, there are fields for both "orig" and "text"
+    // But they're identical!
     pub text: String,
 }

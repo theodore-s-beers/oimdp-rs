@@ -85,7 +85,7 @@ fn remove_phrase_lv_tags(line: String) -> String {
 
 // Line parsing function
 
-fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Option<Line> {
+fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> Option<Line> {
     // Remove initial line marker
     let line = tagged_line.trim_start_matches(LINE);
 
@@ -154,6 +154,9 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
     // as the text of that entity
     // I can't make it work in Rust quite like it does in Python, though
     let mut include_words: u32 = 0;
+
+    // Given the changes I've made, I also want to indicate entity type for NamedEntityText
+    let mut entity_type: Option<EntityType> = None;
 
     // Iterate over line tokens
     // Basically, a token could be a tag, or any text falling between two tags
@@ -301,12 +304,13 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             // I'm taking a different approach: the subsequent LinePart will be
             // NamedEntityText
             include_words = extent;
+            entity_type = Some(EntityType::Src);
 
             parts.push(LinePart::NamedEntity(NamedEntity {
                 orig: token_trimmed.into(),
                 prefix,
                 extent,
-                ne_type: "src".into(),
+                ne_type: EntityType::Src,
             }));
         // Not sure what SOC means
         } else if token_trimmed.starts_with(SOC_FULL) {
@@ -320,12 +324,13 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             let extent: u32 = extent_char.to_digit(10).unwrap();
 
             include_words = extent;
+            entity_type = Some(EntityType::Soc);
 
             parts.push(LinePart::NamedEntity(NamedEntity {
                 orig: token_trimmed.into(),
                 prefix,
                 extent,
-                ne_type: "soc".into(),
+                ne_type: EntityType::Soc,
             }));
         // Again SOC...
         } else if token_trimmed.starts_with(SOC) {
@@ -339,12 +344,13 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             let extent: u32 = extent_char.to_digit(10).unwrap();
 
             include_words = extent;
+            entity_type = Some(EntityType::Soc);
 
             parts.push(LinePart::NamedEntity(NamedEntity {
                 orig: token_trimmed.into(),
                 prefix,
                 extent,
-                ne_type: "soc".into(),
+                ne_type: EntityType::Soc,
             }));
         // Topological entity (I think)
         } else if token_trimmed.starts_with(TOP_FULL) {
@@ -358,12 +364,13 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             let extent: u32 = extent_char.to_digit(10).unwrap();
 
             include_words = extent;
+            entity_type = Some(EntityType::Top);
 
             parts.push(LinePart::NamedEntity(NamedEntity {
                 orig: token_trimmed.into(),
                 prefix,
                 extent,
-                ne_type: "top".into(),
+                ne_type: EntityType::Top,
             }));
         // Again topological entity
         } else if token_trimmed.starts_with(TOP) {
@@ -377,12 +384,13 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             let extent: u32 = extent_char.to_digit(10).unwrap();
 
             include_words = extent;
+            entity_type = Some(EntityType::Top);
 
             parts.push(LinePart::NamedEntity(NamedEntity {
                 orig: token_trimmed.into(),
                 prefix,
                 extent,
-                ne_type: "top".into(),
+                ne_type: EntityType::Top,
             }));
         // Person (?)
         } else if token_trimmed.starts_with(PER_FULL) {
@@ -396,12 +404,13 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             let extent: u32 = extent_char.to_digit(10).unwrap();
 
             include_words = extent;
+            entity_type = Some(EntityType::Per);
 
             parts.push(LinePart::NamedEntity(NamedEntity {
                 orig: token_trimmed.into(),
                 prefix,
                 extent,
-                ne_type: "per".into(),
+                ne_type: EntityType::Per,
             }));
         // Again person
         } else if token_trimmed.starts_with(PER) {
@@ -415,12 +424,13 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             let extent: u32 = extent_char.to_digit(10).unwrap();
 
             include_words = extent;
+            entity_type = Some(EntityType::Per);
 
             parts.push(LinePart::NamedEntity(NamedEntity {
                 orig: token_trimmed.into(),
                 prefix,
                 extent,
-                ne_type: "per".into(),
+                ne_type: EntityType::Per,
             }));
         } else if include_words > 0 {
             // This block becomes active if we assigned a new value to include_words
@@ -448,15 +458,19 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
             }
 
             if !entity.is_empty() {
-                parts.push(LinePart::NamedEntityText(NamedEntityText { text: entity }))
+                parts.push(LinePart::NamedEntityText(NamedEntityText {
+                    text: entity,
+                    ne_type: entity_type.unwrap(),
+                }))
             }
 
             if !rest.is_empty() {
                 parts.push(LinePart::TextPart(TextPart { text: rest }))
             }
 
-            // Reset include_words to 0
+            // Reset include_words to 0, entity_type to None
             include_words = 0;
+            entity_type = None;
         } else {
             // If we made it to this point and no tag or anything else matched,
             // we can just add it to the line as textual content
@@ -473,7 +487,7 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
     let line_type = if let Some(specified) = kind {
         specified
     } else {
-        "line".into()
+        LineType::Normal
     };
 
     // I've tried to match the Python library here, in particular using the
@@ -493,7 +507,6 @@ fn parse_line(tagged_line: &str, kind: Option<String>, first_token: bool) -> Opt
 pub fn parser(input: String) -> Result<Document> {
     // This is our return value, gods willing
     let mut doc = Document {
-        orig_text: input.clone(),
         magic_value: String::new(),
         simple_metadata: Vec::new(),
         content: Vec::new(),
@@ -564,7 +577,7 @@ pub fn parser(input: String) -> Result<Document> {
             }
         // Route from
         } else if line_trimmed.starts_with(ROUTE_FROM) {
-            let kind = "route_or_distance".into();
+            let kind = LineType::RouteOrDistance;
             let parsed_line = parse_line(line_trimmed, Some(kind), false);
 
             if let Some(parsed_line_content) = parsed_line {
@@ -586,7 +599,7 @@ pub fn parser(input: String) -> Result<Document> {
 
             // If line contains hemistich marker (which can occur in the middle)...
             if line_trimmed.contains(HEMI) {
-                let kind = "verse".into();
+                let kind = LineType::Verse;
                 let verse_parsed = parse_line(no_marker, Some(kind), false);
 
                 if let Some(verse_content) = verse_parsed {
@@ -826,11 +839,18 @@ mod tests {
         if let Content::Line(Line {
             orig: _,
             text_only: _,
-            parts: _,
+            parts,
             line_type,
         }) = &text_parsed.content[55]
         {
-            assert_eq!(line_type, "verse");
+            // This seems to be the most concise way of testing the enum variant
+            assert!(matches!(line_type, &LineType::Verse));
+
+            if let LinePart::TextPart(TextPart { text }) = &parts[0] {
+                assert_eq!(text, "وجمع العرب تحت لواء الرسول محمد عليه الصلاة");
+            } else {
+                panic!("Not the type that we were expecting");
+            }
         } else {
             panic!("Not the type that we were expecting");
         }
