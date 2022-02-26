@@ -105,7 +105,7 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
     // is Isnad. So I made the function argument into a bool for simplicity.
     // But I still don't understand what this is supposed to accomplish...
     if first_token {
-        parts.push(LinePart::Isnad(Isnad {}))
+        parts.push(LinePart::Isnad);
     }
 
     // Regex sadness
@@ -230,22 +230,22 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
             }));
         // "Milestone" (used to break up texts into manageable units)
         } else if token_trimmed.contains(MILESTONE) {
-            parts.push(LinePart::Milestone(Milestone {}));
+            parts.push(LinePart::Milestone);
         // Matn (?)
         } else if token_trimmed.contains(MATN) {
-            parts.push(LinePart::Matn(Matn {}));
+            parts.push(LinePart::Matn);
         // Ḥukm (?)
         } else if token_trimmed.contains(HUKM) {
-            parts.push(LinePart::Hukm(Hukm {}));
+            parts.push(LinePart::Hukm);
         // Route from
         } else if token_trimmed.contains(ROUTE_FROM) {
-            parts.push(LinePart::RouteFrom(RouteFrom {}));
+            parts.push(LinePart::RouteFrom);
         // Route toward
         } else if token_trimmed.contains(ROUTE_TOWA) {
-            parts.push(LinePart::RouteTowa(RouteTowa {}));
+            parts.push(LinePart::RouteTowa);
         // Route distance (?)
         } else if token_trimmed.contains(ROUTE_DIST) {
-            parts.push(LinePart::RouteDist(RouteDist {}));
+            parts.push(LinePart::RouteDist);
         // Year of birth
         } else if token_trimmed.contains(YEAR_BIRTH) {
             let orig = token_trimmed.into();
@@ -565,7 +565,7 @@ pub fn parser(input: String) -> Result<Document> {
             // First add the whole line
             doc.content.push(Content::Paragraph(Paragraph {
                 orig: line_trimmed.into(),
-                para_type: "riwayat".into(),
+                para_type: ParaType::Riwayat,
             }));
 
             // Then parse everything after the riwāya tag
@@ -608,7 +608,7 @@ pub fn parser(input: String) -> Result<Document> {
             } else {
                 doc.content.push(Content::Paragraph(Paragraph {
                     orig: line_trimmed.into(),
-                    para_type: "para".into(),
+                    para_type: ParaType::Normal,
                 }));
 
                 let first_line = parse_line(no_marker, None, false);
@@ -625,9 +625,7 @@ pub fn parser(input: String) -> Result<Document> {
             }
         // Editorial (whatever that means)
         } else if line_trimmed.starts_with(EDITORIAL) {
-            doc.content.push(Content::Editorial(Editorial {
-                orig: line_trimmed.into(),
-            }));
+            doc.content.push(Content::Editorial);
         // Heading
         } else if line_trimmed.starts_with(HEADER1) {
             // I think "value" means the actual heading content, minus the tag

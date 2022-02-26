@@ -16,7 +16,7 @@ pub enum Content {
     Paragraph(Paragraph),
     Line(Line),
     MorphologicalPattern(MorphologicalPattern),
-    Editorial(Editorial),
+    Editorial,
     SectionHeader(SectionHeader),
     DictionaryUnit(DictionaryUnit),
     DoxographicalItem(DoxographicalItem),
@@ -34,11 +34,6 @@ pub struct PageNumber {
 pub struct MorphologicalPattern {
     pub orig: String,
     pub category: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct Editorial {
-    pub orig: String,
 }
 
 #[derive(Clone, Debug)]
@@ -66,6 +61,7 @@ pub struct BioOrEvent {
     pub be_type: String,
 }
 
+// Administrative regions are not yet fully implemented in the Python library
 #[derive(Clone, Debug)]
 pub struct AdministrativeRegion {
     pub orig: String,
@@ -77,7 +73,13 @@ pub struct AdministrativeRegion {
 #[derive(Clone, Debug)]
 pub struct Paragraph {
     pub orig: String,
-    pub para_type: String,
+    pub para_type: ParaType,
+}
+
+#[derive(Clone, Debug)]
+pub enum ParaType {
+    Normal,
+    Riwayat,
 }
 
 // Line
@@ -103,26 +105,23 @@ pub enum LineType {
 
 #[derive(Clone, Debug)]
 pub enum LinePart {
-    Isnad(Isnad),
+    Isnad,
     PageNumber(PageNumber),
     OpenTagUser(OpenTagUser),
     OpenTagAuto(OpenTagAuto),
     Hemistich(Hemistich),
-    Milestone(Milestone),
-    Matn(Matn),
-    Hukm(Hukm),
-    RouteFrom(RouteFrom),
-    RouteTowa(RouteTowa),
-    RouteDist(RouteDist),
+    Milestone,
+    Matn,
+    Hukm,
+    RouteFrom,
+    RouteTowa,
+    RouteDist,
     Date(Date),
     Age(Age),
     NamedEntity(NamedEntity),
     TextPart(TextPart),
     NamedEntityText(NamedEntityText),
 }
-
-#[derive(Clone, Debug)]
-pub struct Isnad {}
 
 #[derive(Clone, Debug)]
 pub struct OpenTagUser {
@@ -146,24 +145,6 @@ pub struct OpenTagAuto {
 pub struct Hemistich {
     pub orig: String,
 }
-
-#[derive(Clone, Debug)]
-pub struct Milestone {}
-
-#[derive(Clone, Debug)]
-pub struct Matn {}
-
-#[derive(Clone, Debug)]
-pub struct Hukm {}
-
-#[derive(Clone, Debug)]
-pub struct RouteFrom {}
-
-#[derive(Clone, Debug)]
-pub struct RouteTowa {}
-
-#[derive(Clone, Debug)]
-pub struct RouteDist {}
 
 #[derive(Clone, Debug)]
 pub struct Date {
