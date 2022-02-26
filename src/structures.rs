@@ -111,8 +111,7 @@ pub enum ParaType {
 
 #[derive(Clone, Debug)]
 pub struct Line {
-    pub orig: String,
-    pub text_only: String,
+    pub text_only: Option<String>,
     pub parts: Vec<LinePart>,
     pub line_type: LineType,
 }

@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use regex::Regex;
 
 mod structures;
-use crate::structures::*;
+pub use crate::structures::*;
 
 mod tags;
 use crate::tags::*;
@@ -78,7 +78,8 @@ fn remove_phrase_lv_tags(line: String) -> String {
         )"
     );
 
-    text_only = yikes.replace_all(&text_only, "").into();
+    // We can also trim outside whitespace before returning
+    text_only = yikes.replace_all(&text_only, "").trim().into();
 
     text_only
 }
@@ -90,10 +91,12 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
     let line = tagged_line.trim_start_matches(LINE);
 
     // Remove phrase-level tags (whatever that means)
-    let text_only = remove_phrase_lv_tags(line.into());
+    let without_tags = remove_phrase_lv_tags(line.to_owned());
 
-    // Return early if there's nothing left at this point
-    if text_only.is_empty() {
+    // This was weird: the Python library returns None here if there's nothing left
+    // after stripping tags from the line. But that caused a problem for lines where
+    // there's a page number tag (which we do want to parse) and nothing else
+    if without_tags.is_empty() && !line.contains(PAGE) {
         return None;
     }
 
@@ -490,10 +493,16 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
         LineType::Normal
     };
 
+    // Determine text_only field
+    let text_only = if !without_tags.is_empty() {
+        Some(without_tags)
+    } else {
+        None
+    };
+
     // I've tried to match the Python library here, in particular using the
     // "line" variable for the orig field
     let line_struct = Line {
-        orig: line.into(),
         text_only,
         parts,
         line_type,
@@ -825,19 +834,21 @@ mod tests {
         let full_text = fs::read_to_string("test.md").unwrap();
         let text_parsed = parser(full_text).unwrap();
 
+        // Test a level 5 heading
         if let Content::SectionHeader(SectionHeader {
             orig: _,
-            value: _,
+            value,
             level,
         }) = &text_parsed.content[54]
         {
+            assert_eq!(value, "(نهج ابن هشام في هذا الكتاب) :");
             assert_eq!(*level, 5);
         } else {
             panic!("Not the type that we were expecting");
         }
 
+        // Test a line of poetry
         if let Content::Line(Line {
-            orig: _,
             text_only: _,
             parts,
             line_type,
@@ -848,6 +859,18 @@ mod tests {
 
             if let LinePart::TextPart(TextPart { text }) = &parts[0] {
                 assert_eq!(text, "وجمع العرب تحت لواء الرسول محمد عليه الصلاة");
+            } else {
+                panic!("Not the type that we were expecting");
+            }
+
+            if let LinePart::Hemistich(Hemistich { orig }) = &parts[1] {
+                assert_eq!(orig, "%~%");
+            } else {
+                panic!("Not the type that we were expecting");
+            }
+
+            if let LinePart::TextPart(TextPart { text }) = &parts[2] {
+                assert_eq!(text, "والسلام، وما يضاف إلى ذلك من");
             } else {
                 panic!("Not the type that we were expecting");
             }
