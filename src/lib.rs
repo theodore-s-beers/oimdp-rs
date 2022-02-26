@@ -798,55 +798,15 @@ mod tests {
     });
 
     #[test]
-    fn metadata() {
-        let text_parsed = &PARSED;
-        let simple_metadata = &text_parsed.simple_metadata;
-
-        assert_eq!(simple_metadata.len(), 33);
-        assert_eq!(simple_metadata[1], "000.SortField	:: Shamela_0023833");
-        assert_eq!(
-            simple_metadata[simple_metadata.len() - 1],
-            "999.MiscINFO	:: NODATA"
-        );
-    }
-
-    #[test]
-    fn line_parts() {
-        let line =
-            r###"~~ الصلاة والسلام، وما يضاف إلى ذلك @SOC02 نزيل: 1"018: واسط.. شيخ: معمر"###;
-
-        let line_parsed = parse_line(line, None, false).unwrap();
-        let parts = line_parsed.parts;
-
-        // Testing specific fields like this will not be easy in Rust
-        if let LinePart::TextPart(TextPart { text }) = &parts[3] {
-            assert_eq!(text, r###"واسط.. 1"018: نزيل: "###);
-        } else {
-            panic!("Not the type that we were expecting");
-        }
-    }
-
-    #[test]
-    fn riwayat() {
-        let text_parsed = &PARSED;
-
-        if let Content::Paragraph(Paragraph { orig: _, para_type }) = &text_parsed.content[46] {
-            assert!(matches!(para_type, ParaType::Riwayat));
-        } else {
-            panic!("Not the type that we were expecting");
-        }
-    }
-
-    #[test]
     fn combined() {
-        let text_parsed = &PARSED;
+        let content = &PARSED.content;
 
         // Test a route or distance line
         if let Content::Line(Line {
             text_only: _,
             parts,
             line_type,
-        }) = &text_parsed.content[49]
+        }) = &content[49]
         {
             assert!(matches!(line_type, LineType::RouteOrDistance));
             assert!(matches!(parts[0], LinePart::RouteFrom));
@@ -866,7 +826,7 @@ mod tests {
             orig: _,
             value,
             level,
-        }) = &text_parsed.content[50]
+        }) = &content[50]
         {
             assert_eq!(
                 value,
@@ -882,7 +842,7 @@ mod tests {
             orig: _,
             value,
             level,
-        }) = &text_parsed.content[52]
+        }) = &content[52]
         {
             assert_eq!(value, "(نهج ابن هشام في هذا الكتاب) :");
             assert_eq!(*level, 3);
@@ -895,7 +855,7 @@ mod tests {
             orig: _,
             value,
             level,
-        }) = &text_parsed.content[54]
+        }) = &content[54]
         {
             assert_eq!(value, "(نهج ابن هشام في هذا الكتاب) :");
             assert_eq!(*level, 5);
@@ -908,7 +868,7 @@ mod tests {
             text_only: _,
             parts,
             line_type,
-        }) = &text_parsed.content[55]
+        }) = &content[55]
         {
             // This seems to be the most concise way of testing the enum variant
             assert!(matches!(line_type, LineType::Verse));
@@ -930,6 +890,46 @@ mod tests {
             } else {
                 panic!("Not the type that we were expecting");
             }
+        } else {
+            panic!("Not the type that we were expecting");
+        }
+    }
+
+    #[test]
+    fn line_parts() {
+        let line =
+            r###"~~ الصلاة والسلام، وما يضاف إلى ذلك @SOC02 نزيل: 1"018: واسط.. شيخ: معمر"###;
+
+        let line_parsed = parse_line(line, None, false).unwrap();
+        let parts = line_parsed.parts;
+
+        // Testing specific fields like this will not be easy in Rust
+        if let LinePart::TextPart(TextPart { text }) = &parts[3] {
+            assert_eq!(text, r###"واسط.. 1"018: نزيل: "###);
+        } else {
+            panic!("Not the type that we were expecting");
+        }
+    }
+
+    #[test]
+    fn metadata() {
+        let text_parsed = &PARSED;
+        let simple_metadata = &text_parsed.simple_metadata;
+
+        assert_eq!(simple_metadata.len(), 33);
+        assert_eq!(simple_metadata[1], "000.SortField	:: Shamela_0023833");
+        assert_eq!(
+            simple_metadata[simple_metadata.len() - 1],
+            "999.MiscINFO	:: NODATA"
+        );
+    }
+
+    #[test]
+    fn riwayat() {
+        let content = &PARSED.content;
+
+        if let Content::Paragraph(Paragraph { orig: _, para_type }) = &content[46] {
+            assert!(matches!(para_type, ParaType::Riwayat));
         } else {
             panic!("Not the type that we were expecting");
         }
