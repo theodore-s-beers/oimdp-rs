@@ -82,6 +82,11 @@ fn remove_phrase_lv_tags(line: String) -> String {
     // We can also trim outside whitespace before returning
     text_only = yikes.replace_all(&text_only, "").trim().into();
 
+    // Replace any occurrence of multiple spaces with one space
+    // This comes up because of tag removal and was annoying me
+    let multiple_spaces = regex!(r"\s{2,}");
+    text_only = multiple_spaces.replace_all(&text_only, " ").into();
+
     text_only
 }
 
@@ -206,13 +211,12 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
             let t_subtype = opentag_matches[3].into();
             let t_subsubtype = opentag_matches[5].into();
 
-            parts.push(LinePart::OpenTagUser(OpenTagUser {
-                orig: token_trimmed.into(),
+            parts.push(LinePart::OpenTagUser {
                 user,
                 t_type,
                 t_subtype,
                 t_subsubtype,
-            }));
+            });
         // "Open tag auto" (?)
         } else if let Some(opentagauto_matches) = opentagauto_captures {
             let resp = opentagauto_matches[1].into();
@@ -220,18 +224,17 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
             let category = opentagauto_matches[3].into();
             let review = opentagauto_matches[5].into();
 
-            parts.push(LinePart::OpenTagAuto(OpenTagAuto {
-                orig: token_trimmed.into(),
+            parts.push(LinePart::OpenTagAuto {
                 resp,
                 t_type,
                 category,
                 review,
-            }));
+            });
         // Hemistich
         } else if token_trimmed.contains(HEMI) {
-            parts.push(LinePart::Hemistich(Hemistich {
+            parts.push(LinePart::Hemistich {
                 orig: token_trimmed.into(),
-            }));
+            });
         // "Milestone" (used to break up texts into manageable units)
         } else if token_trimmed.contains(MILESTONE) {
             parts.push(LinePart::Milestone);
@@ -252,43 +255,26 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
             parts.push(LinePart::RouteDist);
         // Year of birth
         } else if token_trimmed.contains(YEAR_BIRTH) {
-            let orig = token_trimmed.into();
             let value = token_trimmed.trim_start_matches(YEAR_BIRTH).into();
             let date_type = DateType::Birth;
 
-            parts.push(LinePart::Date(Date {
-                orig,
-                value,
-                date_type,
-            }));
+            parts.push(LinePart::Date { value, date_type });
         // Year of death
         } else if token_trimmed.contains(YEAR_DEATH) {
-            let orig = token_trimmed.into();
             let value = token_trimmed.trim_start_matches(YEAR_DEATH).into();
             let date_type = DateType::Death;
 
-            parts.push(LinePart::Date(Date {
-                orig,
-                value,
-                date_type,
-            }));
+            parts.push(LinePart::Date { value, date_type });
         // Other year
         } else if token_trimmed.contains(YEAR_OTHER) {
-            let orig = token_trimmed.into();
             let value = token_trimmed.trim_start_matches(YEAR_OTHER).into();
             let date_type = DateType::Other;
 
-            parts.push(LinePart::Date(Date {
-                orig,
-                value,
-                date_type,
-            }));
-        // Age (?)
+            parts.push(LinePart::Date { value, date_type });
+        // Age
         } else if token_trimmed.contains(YEAR_AGE) {
-            let orig = token_trimmed.into();
             let value = token_trimmed.trim_start_matches(YEAR_AGE).into();
-
-            parts.push(LinePart::Age(Age { orig, value }));
+            parts.push(LinePart::Age { value });
         // Source
         } else if token_trimmed.contains(SRC) {
             // This should yield a string representation of a two-digit number
@@ -310,12 +296,11 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
             include_words = extent;
             entity_type = Some(EntityType::Src);
 
-            parts.push(LinePart::NamedEntity(NamedEntity {
-                orig: token_trimmed.into(),
+            parts.push(LinePart::NamedEntity {
                 prefix,
                 extent,
                 ne_type: EntityType::Src,
-            }));
+            });
         // Not sure what SOC means
         } else if token_trimmed.starts_with(SOC_FULL) {
             let val = token_trimmed.trim_start_matches(SOC_FULL);
@@ -330,12 +315,11 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
             include_words = extent;
             entity_type = Some(EntityType::Soc);
 
-            parts.push(LinePart::NamedEntity(NamedEntity {
-                orig: token_trimmed.into(),
+            parts.push(LinePart::NamedEntity {
                 prefix,
                 extent,
                 ne_type: EntityType::Soc,
-            }));
+            });
         // Again SOC...
         } else if token_trimmed.starts_with(SOC) {
             let val = token_trimmed.trim_start_matches(SOC);
@@ -350,12 +334,11 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
             include_words = extent;
             entity_type = Some(EntityType::Soc);
 
-            parts.push(LinePart::NamedEntity(NamedEntity {
-                orig: token_trimmed.into(),
+            parts.push(LinePart::NamedEntity {
                 prefix,
                 extent,
                 ne_type: EntityType::Soc,
-            }));
+            });
         // Topological entity (I think)
         } else if token_trimmed.starts_with(TOP_FULL) {
             let val = token_trimmed.trim_start_matches(TOP_FULL);
@@ -370,12 +353,11 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
             include_words = extent;
             entity_type = Some(EntityType::Top);
 
-            parts.push(LinePart::NamedEntity(NamedEntity {
-                orig: token_trimmed.into(),
+            parts.push(LinePart::NamedEntity {
                 prefix,
                 extent,
                 ne_type: EntityType::Top,
-            }));
+            });
         // Again topological entity
         } else if token_trimmed.starts_with(TOP) {
             let val = token_trimmed.trim_start_matches(TOP);
@@ -390,12 +372,11 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
             include_words = extent;
             entity_type = Some(EntityType::Top);
 
-            parts.push(LinePart::NamedEntity(NamedEntity {
-                orig: token_trimmed.into(),
+            parts.push(LinePart::NamedEntity {
                 prefix,
                 extent,
                 ne_type: EntityType::Top,
-            }));
+            });
         // Person (?)
         } else if token_trimmed.starts_with(PER_FULL) {
             let val = token_trimmed.trim_start_matches(PER_FULL);
@@ -410,12 +391,11 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
             include_words = extent;
             entity_type = Some(EntityType::Per);
 
-            parts.push(LinePart::NamedEntity(NamedEntity {
-                orig: token_trimmed.into(),
+            parts.push(LinePart::NamedEntity {
                 prefix,
                 extent,
                 ne_type: EntityType::Per,
-            }));
+            });
         // Again person
         } else if token_trimmed.starts_with(PER) {
             let val = token_trimmed.trim_start_matches(PER);
@@ -430,12 +410,11 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
             include_words = extent;
             entity_type = Some(EntityType::Per);
 
-            parts.push(LinePart::NamedEntity(NamedEntity {
-                orig: token_trimmed.into(),
+            parts.push(LinePart::NamedEntity {
                 prefix,
                 extent,
                 ne_type: EntityType::Per,
-            }));
+            });
         } else if include_words > 0 {
             // This block becomes active if we assigned a new value to include_words
             // That would mean that there is some NamedEntity that has been added
@@ -462,14 +441,16 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
             }
 
             if !entity.is_empty() {
-                parts.push(LinePart::NamedEntityText(NamedEntityText {
-                    text: entity,
+                parts.push(LinePart::NamedEntityText {
+                    text: entity.trim().into(),
                     ne_type: entity_type.unwrap(),
-                }))
+                });
             }
 
             if !rest.is_empty() {
-                parts.push(LinePart::TextPart(TextPart { text: rest }))
+                parts.push(LinePart::TextPart {
+                    text: rest.trim().into(),
+                });
             }
 
             // Reset include_words to 0, entity_type to None
@@ -478,9 +459,9 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
         } else {
             // If we made it to this point and no tag or anything else matched,
             // we can just add it to the line as textual content
-            parts.push(LinePart::TextPart(TextPart {
-                text: token_trimmed.into(),
-            }))
+            parts.push(LinePart::TextPart {
+                text: token.trim().into(),
+            });
         }
     }
 
@@ -573,14 +554,14 @@ pub fn parser(input: String) -> Result<Document> {
         // Riwāya
         } else if line_trimmed.starts_with(RWY) {
             // First add the whole line
-            doc.content.push(Content::Paragraph(Paragraph {
+            doc.content.push(Content::Paragraph {
                 orig: line_trimmed.into(),
                 para_type: ParaType::Riwayat,
-            }));
+            });
 
             // Then parse everything after the riwāya tag
             let double_trimmed = line_trimmed.trim_start_matches(RWY);
-            let first_line = parse_line(double_trimmed, None, false);
+            let first_line = parse_line(double_trimmed, None, true);
 
             if let Some(first_line_content) = first_line {
                 doc.content.push(Content::Line(first_line_content));
@@ -597,11 +578,10 @@ pub fn parser(input: String) -> Result<Document> {
         } else if let Some(cap) = morpho_pattern.captures(line_trimmed) {
             let category = cap[1].into();
 
-            doc.content
-                .push(Content::MorphologicalPattern(MorphologicalPattern {
-                    orig: line_trimmed.into(),
-                    category,
-                }));
+            doc.content.push(Content::MorphologicalPattern {
+                orig: line_trimmed.into(),
+                category,
+            });
         // Paragraph
         } else if para_pattern.is_match(line_trimmed) {
             // This line will be parsed without the initial paragraph marker
@@ -616,10 +596,10 @@ pub fn parser(input: String) -> Result<Document> {
                     doc.content.push(Content::Line(verse_content));
                 }
             } else {
-                doc.content.push(Content::Paragraph(Paragraph {
+                doc.content.push(Content::Paragraph {
                     orig: line_trimmed.into(),
                     para_type: ParaType::Normal,
-                }));
+                });
 
                 let first_line = parse_line(no_marker, None, false);
                 if let Some(first_line_content) = first_line {
@@ -663,11 +643,7 @@ pub fn parser(input: String) -> Result<Document> {
                 level = 2;
             }
 
-            doc.content.push(Content::SectionHeader(SectionHeader {
-                orig: line_trimmed.into(),
-                value,
-                level,
-            }));
+            doc.content.push(Content::SectionHeader { value, level });
         // Dictionary content (?)
         } else if line_trimmed.starts_with(DIC) {
             // Strip tags
@@ -691,10 +667,10 @@ pub fn parser(input: String) -> Result<Document> {
             };
 
             // Add dictionary unit
-            doc.content.push(Content::DictionaryUnit(DictionaryUnit {
+            doc.content.push(Content::DictionaryUnit {
                 orig: line_trimmed.into(),
                 dic_type,
-            }));
+            });
 
             // If there was other line content, add that
             if let Some(first_line_content) = first_line {
@@ -719,11 +695,10 @@ pub fn parser(input: String) -> Result<Document> {
             };
 
             // Add doxographical item
-            doc.content
-                .push(Content::DoxographicalItem(DoxographicalItem {
-                    orig: line_trimmed.into(),
-                    dox_type,
-                }));
+            doc.content.push(Content::DoxographicalItem {
+                orig: line_trimmed.into(),
+                dox_type,
+            });
 
             // If there was other line content, add that
             if let Some(first_line_content) = first_line {
@@ -760,10 +735,10 @@ pub fn parser(input: String) -> Result<Document> {
                 };
 
             // Add biographical item
-            doc.content.push(Content::BioOrEvent(BioOrEvent {
+            doc.content.push(Content::BioOrEvent {
                 orig: line_trimmed.into(),
                 be_type,
-            }));
+            });
 
             // If there was other line content, add that
             if let Some(first_line_content) = first_line {
@@ -771,10 +746,9 @@ pub fn parser(input: String) -> Result<Document> {
             }
         // Region
         } else if region_pattern.is_match(line_trimmed) {
-            doc.content
-                .push(Content::AdministrativeRegion(AdministrativeRegion {
-                    orig: line_trimmed.into(),
-                }));
+            doc.content.push(Content::AdministrativeRegion {
+                orig: line_trimmed.into(),
+            });
         } else {
             // Can just no-op this (which I'm sure the compiler does anyway)
             // continue;
@@ -801,51 +775,47 @@ mod tests {
     fn heading_five() {
         let content = &PARSED.content;
 
-        // Test a level 5 heading
-        if let Content::SectionHeader(SectionHeader {
-            orig: _,
-            value,
-            level,
-        }) = &content[54]
-        {
-            assert_eq!(value, "(نهج ابن هشام في هذا الكتاب) :");
-            assert_eq!(*level, 5);
-        } else {
-            panic!("Not the type that we were expecting");
-        }
+        // Level 5 heading (orig, text, level)
+        assert_eq!(
+            content[54].as_section_header().unwrap(),
+            (&"(نهج ابن هشام في هذا الكتاب) :".to_string(), &5u32)
+        );
     }
 
     #[test]
     fn heading_one() {
         let content = &PARSED.content;
 
-        if let Content::SectionHeader(SectionHeader {
-            orig: _,
-            value,
-            level,
-        }) = &content[50]
-        {
-            assert_eq!(
-                value,
-                "ذكر سرد النسب الزكي من محمد صلى الله عليه وآله وسلم، إلى آدم عليه السلام"
-            );
-            assert_eq!(*level, 1);
-        } else {
-            panic!("Not the type that we were expecting");
-        }
+        // Level 1 heading (orig, text, level)
+        assert_eq!(
+            content[50].as_section_header().unwrap(),
+            (
+                &"ذكر سرد النسب الزكي من محمد صلى الله عليه وآله وسلم، إلى آدم عليه السلام"
+                    .to_string(),
+                &1u32
+            )
+        );
     }
 
     #[test]
-    fn line_parts() {
-        let line = r#"~~ الصلاة والسلام، وما يضاف إلى ذلك @SOC02 نزيل: 1"018: واسط.. شيخ: معمر"#;
+    fn isnad_matn() {
+        let content = &PARSED.content;
 
-        let line_parsed = parse_line(line, None, false).unwrap();
-        let parts = line_parsed.parts;
+        if let Content::Line(Line {
+            text_only: _,
+            parts,
+            line_type,
+        }) = &content[47]
+        {
+            assert!(line_type.is_normal());
+            assert!(parts[0].is_isnad());
 
-        if let LinePart::TextPart(TextPart { text }) = &parts[3] {
-            assert_eq!(text, r#"واسط.. 1"018: نزيل: "#);
+            assert_eq!(
+                parts[1].as_text_part().unwrap(),
+                "this section contains isnād"
+            );
         } else {
-            panic!("Not the type that we were expecting");
+            panic!("Not a Line");
         }
     }
 
@@ -863,6 +833,96 @@ mod tests {
     }
 
     #[test]
+    fn named_entity_soc() {
+        let content = &PARSED.content;
+
+        if let Content::Line(Line {
+            text_only: _,
+            parts,
+            line_type,
+        }) = &content[63]
+        {
+            assert!(line_type.is_normal());
+
+            if let LinePart::NamedEntity {
+                prefix,
+                extent,
+                ne_type,
+            } = &parts[1]
+            {
+                assert_eq!(*prefix, 0);
+                assert_eq!(*extent, 2);
+                assert!(ne_type.is_soc());
+            } else {
+                panic!("Not a NamedEntity");
+            }
+
+            if let LinePart::NamedEntityText { text, ne_type } = &parts[2] {
+                assert_eq!(text, "معمر شيخ:");
+                assert!(ne_type.is_soc());
+            } else {
+                panic!("Not NamedEntityText");
+            }
+
+            assert_eq!(parts[3].as_text_part().unwrap(), r#"واسط.. 1"018: نزيل:"#);
+        } else {
+            panic!("Not a Line");
+        }
+    }
+
+    #[test]
+    fn open_tag_auto() {
+        let content = &PARSED.content;
+
+        if let Content::Line(Line {
+            text_only: _,
+            parts,
+            line_type,
+        }) = &content[73]
+        {
+            assert!(line_type.is_normal());
+
+            assert_eq!(
+                parts[1].as_open_tag_auto().unwrap(),
+                (
+                    &"RES".to_string(),
+                    &"TYPE".to_string(),
+                    &"Category".to_string(),
+                    &"fr".to_string()
+                )
+            );
+        } else {
+            panic!("Not a Line");
+        }
+    }
+
+    #[test]
+    fn open_tag_user() {
+        let content = &PARSED.content;
+
+        if let Content::Line(Line {
+            text_only: _,
+            parts,
+            line_type,
+        }) = &content[71]
+        {
+            assert!(line_type.is_normal());
+
+            assert_eq!(
+                parts[1].as_open_tag_user().unwrap(),
+                (
+                    &"USER".to_string(),
+                    &"CAT".to_string(),
+                    &"SUBCAT".to_string(),
+                    &"SUBSUBCAT".to_string()
+                )
+            );
+        } else {
+            panic!("Not a Line");
+        }
+    }
+
+    #[test]
     fn poetry() {
         let content = &PARSED.content;
 
@@ -872,27 +932,21 @@ mod tests {
             line_type,
         }) = &content[55]
         {
-            assert!(matches!(line_type, LineType::Verse));
+            assert!(line_type.is_verse());
 
-            if let LinePart::TextPart(TextPart { text }) = &parts[0] {
-                assert_eq!(text, "وجمع العرب تحت لواء الرسول محمد عليه الصلاة");
-            } else {
-                panic!("Not the type that we were expecting");
-            }
+            assert_eq!(
+                parts[0].as_text_part().unwrap(),
+                "وجمع العرب تحت لواء الرسول محمد عليه الصلاة"
+            );
 
-            if let LinePart::Hemistich(Hemistich { orig }) = &parts[1] {
-                assert_eq!(orig, "%~%");
-            } else {
-                panic!("Not the type that we were expecting");
-            }
+            assert_eq!(parts[1].as_hemistich().unwrap(), "%~%");
 
-            if let LinePart::TextPart(TextPart { text }) = &parts[2] {
-                assert_eq!(text, "والسلام، وما يضاف إلى ذلك من");
-            } else {
-                panic!("Not the type that we were expecting");
-            }
+            assert_eq!(
+                parts[2].as_text_part().unwrap(),
+                "والسلام، وما يضاف إلى ذلك من"
+            );
         } else {
-            panic!("Not the type that we were expecting");
+            panic!("Not a Line");
         }
     }
 
@@ -900,10 +954,10 @@ mod tests {
     fn riwayat() {
         let content = &PARSED.content;
 
-        if let Content::Paragraph(Paragraph { orig: _, para_type }) = &content[46] {
-            assert!(matches!(para_type, ParaType::Riwayat));
+        if let Content::Paragraph { orig: _, para_type } = &content[46] {
+            assert!(para_type.is_riwayat());
         } else {
-            panic!("Not the type that we were expecting");
+            panic!("Not a Paragraph");
         }
     }
 
@@ -917,17 +971,13 @@ mod tests {
             line_type,
         }) = &content[49]
         {
-            assert!(matches!(line_type, LineType::RouteOrDistance));
-            assert!(matches!(parts[0], LinePart::RouteFrom));
-            assert!(matches!(parts[2], LinePart::RouteTowa));
+            assert!(line_type.is_route_or_distance());
+            assert!(parts[0].is_route_from());
+            assert!(parts[2].is_route_towa());
 
-            if let LinePart::TextPart(TextPart { text }) = &parts[5] {
-                assert_eq!(text, "distance_as_recorded");
-            } else {
-                panic!("Not the type that we were expecting");
-            }
+            assert_eq!(parts[5].as_text_part().unwrap(), "distance_as_recorded");
         } else {
-            panic!("Not the type that we were expecting");
+            panic!("Not a Line");
         }
     }
 }

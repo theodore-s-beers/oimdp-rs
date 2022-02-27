@@ -1,7 +1,10 @@
-// This still needs review; I obviously couldn't replicate the Python objects one-to-one
+use enum_as_inner::EnumAsInner;
+
+// This needs ongoing review; I obviously couldn't replicate Python objects one-to-one
 
 // Document
 
+#[derive(Debug)]
 pub struct Document {
     pub magic_value: String,
     pub simple_metadata: Vec<String>,
@@ -10,18 +13,20 @@ pub struct Document {
 
 // Content
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, EnumAsInner)]
 pub enum Content {
     PageNumber(PageNumber),
-    Paragraph(Paragraph),
+    // Switched to use one para. variant, with field to indicate type
+    Paragraph { orig: String, para_type: ParaType },
     Line(Line),
-    MorphologicalPattern(MorphologicalPattern),
+    MorphologicalPattern { orig: String, category: String },
     Editorial,
-    SectionHeader(SectionHeader),
-    DictionaryUnit(DictionaryUnit),
-    DoxographicalItem(DoxographicalItem),
-    BioOrEvent(BioOrEvent),
-    AdministrativeRegion(AdministrativeRegion),
+    SectionHeader { value: String, level: u32 },
+    DictionaryUnit { orig: String, dic_type: DicType },
+    DoxographicalItem { orig: String, dox_type: DoxType },
+    BioOrEvent { orig: String, be_type: BeType },
+    // Admin. regions not yet fully implemented in Python library
+    AdministrativeRegion { orig: String },
 }
 
 #[derive(Clone, Debug)]
@@ -30,52 +35,7 @@ pub struct PageNumber {
     pub page: String,
 }
 
-#[derive(Clone, Debug)]
-pub struct MorphologicalPattern {
-    pub orig: String,
-    pub category: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct SectionHeader {
-    pub orig: String,
-    pub value: String,
-    pub level: u32,
-}
-
-#[derive(Clone, Debug)]
-pub struct DictionaryUnit {
-    pub orig: String,
-    pub dic_type: DicType,
-}
-
-#[derive(Clone, Debug)]
-pub enum DicType {
-    Nis,
-    Top,
-    Lex,
-    Bib,
-}
-
-#[derive(Clone, Debug)]
-pub struct DoxographicalItem {
-    pub orig: String,
-    pub dox_type: DoxType,
-}
-
-#[derive(Clone, Debug)]
-pub enum DoxType {
-    Pos,
-    Sec,
-}
-
-#[derive(Clone, Debug)]
-pub struct BioOrEvent {
-    pub orig: String,
-    pub be_type: BeType,
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, EnumAsInner)]
 pub enum BeType {
     Man,
     Wom,
@@ -85,22 +45,21 @@ pub enum BeType {
     Events,
 }
 
-// Administrative regions are not yet fully implemented in the Python library
-#[derive(Clone, Debug)]
-pub struct AdministrativeRegion {
-    pub orig: String,
+#[derive(Clone, Debug, EnumAsInner)]
+pub enum DicType {
+    Nis,
+    Top,
+    Lex,
+    Bib,
 }
 
-// Paragraph
-// Here I switched to use one struct, with a field to indicate the type
-
-#[derive(Clone, Debug)]
-pub struct Paragraph {
-    pub orig: String,
-    pub para_type: ParaType,
+#[derive(Clone, Debug, EnumAsInner)]
+pub enum DoxType {
+    Pos,
+    Sec,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, EnumAsInner)]
 pub enum ParaType {
     Normal,
     Riwayat,
@@ -116,7 +75,7 @@ pub struct Line {
     pub line_type: LineType,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, EnumAsInner)]
 pub enum LineType {
     Normal,
     RouteOrDistance,
@@ -124,96 +83,65 @@ pub enum LineType {
 }
 
 // Line parts
-// PageNumber is defined under Content, but it belongs to both enums
+// PageNumber is a struct defined under Content; it can belong to either enum
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, EnumAsInner)]
 pub enum LinePart {
     Isnad,
     PageNumber(PageNumber),
-    OpenTagUser(OpenTagUser),
-    OpenTagAuto(OpenTagAuto),
-    Hemistich(Hemistich),
+    OpenTagUser {
+        user: String,
+        t_type: String,
+        t_subtype: String,
+        t_subsubtype: String,
+    },
+    OpenTagAuto {
+        resp: String,
+        t_type: String,
+        category: String,
+        review: String,
+    },
+    Hemistich {
+        orig: String,
+    },
     Milestone,
     Matn,
     Hukm,
     RouteFrom,
     RouteTowa,
     RouteDist,
-    Date(Date),
-    Age(Age),
-    NamedEntity(NamedEntity),
-    TextPart(TextPart),
-    NamedEntityText(NamedEntityText),
+    Date {
+        value: String,
+        date_type: DateType,
+    },
+    Age {
+        value: String,
+    },
+    NamedEntity {
+        prefix: u32,
+        extent: u32,
+        ne_type: EntityType,
+    },
+    TextPart {
+        text: String,
+    },
+    NamedEntityText {
+        text: String,
+        ne_type: EntityType,
+    },
 }
 
-#[derive(Clone, Debug)]
-pub struct OpenTagUser {
-    pub orig: String,
-    pub user: String,
-    pub t_type: String,
-    pub t_subtype: String,
-    pub t_subsubtype: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct OpenTagAuto {
-    pub orig: String,
-    pub resp: String,
-    pub t_type: String,
-    pub category: String,
-    pub review: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct Hemistich {
-    pub orig: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct Date {
-    pub orig: String,
-    pub value: String,
-    pub date_type: DateType,
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, EnumAsInner)]
 pub enum DateType {
     Birth,
     Death,
     Other,
 }
 
-#[derive(Clone, Debug)]
-pub struct Age {
-    pub orig: String,
-    pub value: String,
-}
-
-#[derive(Clone, Debug)]
-pub struct NamedEntity {
-    pub orig: String,
-    pub prefix: u32,
-    pub extent: u32,
-    pub ne_type: EntityType,
-}
-
-#[derive(Clone, Debug)]
-pub struct NamedEntityText {
-    pub text: String,
-    pub ne_type: EntityType,
-}
-
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, EnumAsInner)]
 pub enum EntityType {
     Top,
     Per,
     Soc,
     Src,
-}
-
-#[derive(Clone, Debug)]
-pub struct TextPart {
-    // In the Python library, there are fields for both "orig" and "text"
-    // But they're identical!
-    pub text: String,
 }
