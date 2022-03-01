@@ -795,14 +795,14 @@ mod tests {
             panic!("Not a BioOrEvent");
         }
 
-        if let Content::BioOrEvent { orig: _, be_type } = &content[12] {
+        if let Content::BioOrEvent { orig: _, be_type } = &content[14] {
             assert!(be_type.is_wom());
 
             if let Content::Line(Line {
                 text_only: _,
                 parts,
                 line_type: _,
-            }) = &content[13]
+            }) = &content[15]
             {
                 assert_eq!(
                     parts[0].as_text_part().unwrap(),
@@ -815,7 +815,7 @@ mod tests {
             panic!("Not a BioOrEvent");
         }
 
-        if let Content::BioOrEvent { orig: _, be_type } = &content[16] {
+        if let Content::BioOrEvent { orig: _, be_type } = &content[20] {
             assert!(be_type.is_ref());
         } else {
             panic!("Not a BioOrEvent");
