@@ -507,9 +507,9 @@ pub fn parser(input: String) -> Result<Document> {
     let page_pattern = regex!(r"PageV(\d+)P(\d+)");
     let morpho_pattern = regex!("#~:([^:]+?):");
     let para_pattern = regex!("^#($|[^#])");
-    let bio_pattern = regex!("### $[^#]");
+    let bio_pattern = regex!(r"### \$[^#]");
     let region_pattern =
-        regex!(r"(#$#PROV|#$#REG\d) .*? #$#TYPE .*? (#$#REG\d|#$#STTL) ([\w# ]+) $");
+        regex!(r"(#\$#PROV|#\$#REG\d) .*? #\$#TYPE .*? (#\$#REG\d|#\$#STTL) ([\w# ]+) $");
 
     // Main loop
     for (i, line) in input.lines().enumerate() {
@@ -770,6 +770,57 @@ mod tests {
 
         text_parsed
     });
+
+    #[test]
+    fn bio_event() {
+        let content = &PARSED.content;
+
+        if let Content::BioOrEvent { orig: _, be_type } = &content[2] {
+            assert!(be_type.is_man());
+
+            if let Content::Line(Line {
+                text_only: _,
+                parts,
+                line_type: _,
+            }) = &content[3]
+            {
+                assert_eq!(
+                    parts[0].as_text_part().unwrap(),
+                    "أبو عمرو ابن العلاء واسمه"
+                );
+            } else {
+                panic!("Not a Line");
+            }
+        } else {
+            panic!("Not a BioOrEvent");
+        }
+
+        if let Content::BioOrEvent { orig: _, be_type } = &content[12] {
+            assert!(be_type.is_wom());
+
+            if let Content::Line(Line {
+                text_only: _,
+                parts,
+                line_type: _,
+            }) = &content[13]
+            {
+                assert_eq!(
+                    parts[0].as_text_part().unwrap(),
+                    "1729 - صمعة بنت أحمد بن محمد بن عبيد الله الرئيس النيسابورية من ولد عثمان بن"
+                );
+            } else {
+                panic!("Not a Line");
+            }
+        } else {
+            panic!("Not a BioOrEvent");
+        }
+
+        if let Content::BioOrEvent { orig: _, be_type } = &content[16] {
+            assert!(be_type.is_ref());
+        } else {
+            panic!("Not a BioOrEvent");
+        }
+    }
 
     #[test]
     fn dictionary_units() {
