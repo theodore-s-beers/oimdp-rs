@@ -772,6 +772,35 @@ mod tests {
     });
 
     #[test]
+    fn dictionary_units() {
+        let content = &PARSED.content;
+
+        if let Content::DictionaryUnit { orig: _, dic_type } = &content[28] {
+            assert!(dic_type.is_nis());
+        } else {
+            panic!("Not a DictionaryUnit");
+        }
+
+        if let Content::DictionaryUnit { orig: _, dic_type } = &content[30] {
+            assert!(dic_type.is_top());
+        } else {
+            panic!("Not a DictionaryUnit");
+        }
+
+        if let Content::DictionaryUnit { orig: _, dic_type } = &content[32] {
+            assert!(dic_type.is_lex());
+        } else {
+            panic!("Not a DictionaryUnit");
+        }
+
+        if let Content::DictionaryUnit { orig: _, dic_type } = &content[34] {
+            assert!(dic_type.is_bib());
+        } else {
+            panic!("Not a DictionaryUnit");
+        }
+    }
+
+    #[test]
     fn heading_five() {
         let content = &PARSED.content;
 
