@@ -775,6 +775,7 @@ mod tests {
     fn bio_event() {
         let content = &PARSED.content;
 
+        // Man, full tag
         if let Content::BioOrEvent { orig: _, be_type } = &content[2] {
             assert!(be_type.is_man());
 
@@ -795,6 +796,28 @@ mod tests {
             panic!("Not a BioOrEvent");
         }
 
+        // Man, shorthand
+        if let Content::BioOrEvent { orig: _, be_type } = &content[8] {
+            assert!(be_type.is_man());
+
+            if let Content::Line(Line {
+                text_only: _,
+                parts,
+                line_type: _,
+            }) = &content[9]
+            {
+                assert_eq!(
+                    parts[0].as_text_part().unwrap(),
+                    "أبو عمرو ابن العلاء واسمه"
+                );
+            } else {
+                panic!("Not a Line");
+            }
+        } else {
+            panic!("Not a BioOrEvent");
+        }
+
+        // Woman, full tag
         if let Content::BioOrEvent { orig: _, be_type } = &content[14] {
             assert!(be_type.is_wom());
 
@@ -815,8 +838,128 @@ mod tests {
             panic!("Not a BioOrEvent");
         }
 
+        // Woman, shorthand
+        if let Content::BioOrEvent { orig: _, be_type } = &content[17] {
+            assert!(be_type.is_wom());
+
+            if let Content::Line(Line {
+                text_only: _,
+                parts,
+                line_type: _,
+            }) = &content[18]
+            {
+                assert_eq!(
+                    parts[0].as_text_part().unwrap(),
+                    "1729 - صمعة بنت أحمد بن محمد بن عبيد الله الرئيس النيسابورية من ولد عثمان بن"
+                );
+            } else {
+                panic!("Not a Line");
+            }
+        } else {
+            panic!("Not a BioOrEvent");
+        }
+
+        // Reference, full tag
         if let Content::BioOrEvent { orig: _, be_type } = &content[20] {
             assert!(be_type.is_ref());
+
+            if let Content::Line(Line {
+                text_only: _,
+                parts,
+                line_type: _,
+            }) = &content[21]
+            {
+                assert_eq!(
+                    parts[0].as_text_part().unwrap(),
+                    "[a cross-reference, for both men and women]"
+                );
+            } else {
+                panic!("Not a Line");
+            }
+        } else {
+            panic!("Not a BioOrEvent");
+        }
+
+        // Reference, shorthand
+        if let Content::BioOrEvent { orig: _, be_type } = &content[23] {
+            assert!(be_type.is_ref());
+
+            if let Content::Line(Line {
+                text_only: _,
+                parts,
+                line_type: _,
+            }) = &content[24]
+            {
+                assert_eq!(
+                    parts[0].as_text_part().unwrap(),
+                    "[a cross-reference, for both men and women]"
+                );
+            } else {
+                panic!("Not a Line");
+            }
+        } else {
+            panic!("Not a BioOrEvent");
+        }
+
+        // Names, full tag
+        if let Content::BioOrEvent { orig: _, be_type } = &content[26] {
+            assert!(be_type.is_names());
+
+            if let Content::Line(Line {
+                text_only: _,
+                parts,
+                line_type: _,
+            }) = &content[27]
+            {
+                assert_eq!(
+                    parts[0].as_text_part().unwrap(),
+                    "-وفيها ولد: (@)(@@) المحدث عفيف"
+                );
+            } else {
+                panic!("Not a Line");
+            }
+        } else {
+            panic!("Not a BioOrEvent");
+        }
+
+        // Names, shorthand
+        if let Content::BioOrEvent { orig: _, be_type } = &content[29] {
+            assert!(be_type.is_names());
+
+            if let Content::Line(Line {
+                text_only: _,
+                parts,
+                line_type: _,
+            }) = &content[30]
+            {
+                assert_eq!(
+                    parts[0].as_text_part().unwrap(),
+                    "-وفيها ولد: (@)(@@) المحدث عفيف"
+                );
+            } else {
+                panic!("Not a Line");
+            }
+        } else {
+            panic!("Not a BioOrEvent");
+        }
+
+        // Events
+        if let Content::BioOrEvent { orig: _, be_type } = &content[32] {
+            assert!(be_type.is_events());
+        } else {
+            panic!("Not a BioOrEvent");
+        }
+
+        // Event
+        if let Content::BioOrEvent { orig: _, be_type } = &content[34] {
+            assert!(be_type.is_event());
+        } else {
+            panic!("Not a BioOrEvent");
+        }
+
+        // Another man
+        if let Content::BioOrEvent { orig: _, be_type } = &content[49] {
+            assert!(be_type.is_man());
         } else {
             panic!("Not a BioOrEvent");
         }
