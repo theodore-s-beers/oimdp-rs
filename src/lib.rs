@@ -826,25 +826,25 @@ mod tests {
     fn dictionary_units() {
         let content = &PARSED.content;
 
-        if let Content::DictionaryUnit { orig: _, dic_type } = &content[28] {
+        if let Content::DictionaryUnit { orig: _, dic_type } = &content[36] {
             assert!(dic_type.is_nis());
         } else {
             panic!("Not a DictionaryUnit");
         }
 
-        if let Content::DictionaryUnit { orig: _, dic_type } = &content[30] {
+        if let Content::DictionaryUnit { orig: _, dic_type } = &content[38] {
             assert!(dic_type.is_top());
         } else {
             panic!("Not a DictionaryUnit");
         }
 
-        if let Content::DictionaryUnit { orig: _, dic_type } = &content[32] {
+        if let Content::DictionaryUnit { orig: _, dic_type } = &content[40] {
             assert!(dic_type.is_lex());
         } else {
             panic!("Not a DictionaryUnit");
         }
 
-        if let Content::DictionaryUnit { orig: _, dic_type } = &content[34] {
+        if let Content::DictionaryUnit { orig: _, dic_type } = &content[42] {
             assert!(dic_type.is_bib());
         } else {
             panic!("Not a DictionaryUnit");
@@ -857,7 +857,7 @@ mod tests {
 
         // Level 5 heading (orig, text, level)
         assert_eq!(
-            content[54].as_section_header().unwrap(),
+            content[62].as_section_header().unwrap(),
             (&"(نهج ابن هشام في هذا الكتاب) :".to_string(), &5u32)
         );
     }
@@ -868,7 +868,7 @@ mod tests {
 
         // Level 1 heading (orig, text, level)
         assert_eq!(
-            content[50].as_section_header().unwrap(),
+            content[58].as_section_header().unwrap(),
             (
                 &"ذكر سرد النسب الزكي من محمد صلى الله عليه وآله وسلم، إلى آدم عليه السلام"
                     .to_string(),
@@ -885,7 +885,7 @@ mod tests {
             text_only: _,
             parts,
             line_type,
-        }) = &content[47]
+        }) = &content[55]
         {
             assert!(line_type.is_normal());
             assert!(parts[0].is_isnad());
@@ -894,6 +894,9 @@ mod tests {
                 parts[1].as_text_part().unwrap(),
                 "this section contains isnād"
             );
+
+            assert!(parts[2].is_matn());
+            assert_eq!(parts[3].as_text_part().unwrap(), "this section");
         } else {
             panic!("Not a Line");
         }
@@ -920,7 +923,7 @@ mod tests {
             text_only: _,
             parts,
             line_type,
-        }) = &content[63]
+        }) = &content[71]
         {
             assert!(line_type.is_normal());
 
@@ -958,7 +961,7 @@ mod tests {
             text_only: _,
             parts,
             line_type,
-        }) = &content[73]
+        }) = &content[81]
         {
             assert!(line_type.is_normal());
 
@@ -984,7 +987,7 @@ mod tests {
             text_only: _,
             parts,
             line_type,
-        }) = &content[71]
+        }) = &content[79]
         {
             assert!(line_type.is_normal());
 
@@ -1010,7 +1013,7 @@ mod tests {
             text_only: _,
             parts,
             line_type,
-        }) = &content[55]
+        }) = &content[63]
         {
             assert!(line_type.is_verse());
 
@@ -1034,7 +1037,7 @@ mod tests {
     fn riwayat() {
         let content = &PARSED.content;
 
-        if let Content::Paragraph { orig: _, para_type } = &content[46] {
+        if let Content::Paragraph { orig: _, para_type } = &content[54] {
             assert!(para_type.is_riwayat());
         } else {
             panic!("Not a Paragraph");
@@ -1049,7 +1052,7 @@ mod tests {
             text_only: _,
             parts,
             line_type,
-        }) = &content[49]
+        }) = &content[57]
         {
             assert!(line_type.is_route_or_distance());
             assert!(parts[0].is_route_from());
