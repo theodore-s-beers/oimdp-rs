@@ -1,3 +1,6 @@
+#![warn(clippy::pedantic)]
+#![allow(clippy::wildcard_imports, clippy::doc_markdown)]
+
 use anyhow::{anyhow, Result};
 use once_cell::sync::OnceCell;
 use regex::{Captures, Regex};
@@ -92,6 +95,7 @@ fn remove_phrase_lv_tags(line: String) -> String {
 
 // Line parsing function
 
+#[allow(clippy::too_many_lines)]
 fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> Option<Line> {
     // Remove initial line marker
     let line = tagged_line.trim_start_matches(LINE);
@@ -476,10 +480,10 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
     };
 
     // Determine text_only field
-    let text_only = if !without_tags.is_empty() {
-        Some(without_tags)
-    } else {
+    let text_only = if without_tags.is_empty() {
         None
+    } else {
+        Some(without_tags)
     };
 
     // I've tried to match the Python library here, in particular using the
@@ -495,7 +499,11 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
 
 // Main parser function
 
-pub fn parser(input: String) -> Result<Document> {
+/// # Errors
+///
+/// Will return an error if the input text appears not to be an OpenITI mARkdown document.
+#[allow(clippy::too_many_lines)]
+pub fn parser(input: &str) -> Result<Document> {
     // This is our return value, gods willing
     let mut doc = Document {
         magic_value: String::new(),
@@ -766,7 +774,7 @@ mod tests {
 
     static PARSED: Lazy<Document> = Lazy::new(|| {
         let full_text = fs::read_to_string("test.md").unwrap();
-        let text_parsed = parser(full_text).unwrap();
+        let text_parsed = parser(&full_text).unwrap();
 
         text_parsed
     });

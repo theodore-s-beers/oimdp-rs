@@ -1,4 +1,5 @@
 use anyhow::Result;
+use oimdp_rs::parser;
 use std::{env, fs};
 
 fn main() -> Result<()> {
@@ -10,7 +11,7 @@ fn main() -> Result<()> {
     }
 
     let full_text = fs::read_to_string(file_path)?;
-    let text_parsed = oimdp_rs::parser(full_text).unwrap();
+    let text_parsed = parser(&full_text).unwrap();
 
     println!("Parsed {} content items", text_parsed.content.len());
 
