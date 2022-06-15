@@ -439,7 +439,7 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
             let words: Vec<&str> = token_trimmed.split(' ').collect();
 
             for (pos, word) in words.iter().enumerate() {
-                if pos < (include_words as usize) {
+                if pos < include_words as usize {
                     entity.push_str(word);
                     entity.push(' ');
                 } else {
