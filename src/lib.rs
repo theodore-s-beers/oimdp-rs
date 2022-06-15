@@ -2,7 +2,7 @@
 #![allow(clippy::wildcard_imports, clippy::doc_markdown)]
 
 use anyhow::{anyhow, Result};
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use regex::{Captures, Regex};
 
 mod structures;
@@ -12,7 +12,6 @@ mod tags;
 use crate::tags::*;
 
 // Regex macro from once_cell
-
 macro_rules! regex {
     ($re:literal $(,)?) => {{
         static RE: OnceCell<Regex> = OnceCell::new();
@@ -20,7 +19,12 @@ macro_rules! regex {
     }};
 }
 
-// Smaller helper functions
+// This regex needs to be used in two functions, so we define it here
+static PAGE_PATTERN: Lazy<Regex> = Lazy::new(|| Regex::new(r"PageV([^P]+)P(\d+[AB]?)").unwrap());
+
+//
+// HELPER FUNCTIONS
+//
 
 fn split_keep<'a>(re: &Regex, text: &'a str) -> Vec<&'a str> {
     let mut result = Vec::new();
@@ -93,7 +97,9 @@ fn remove_phrase_lv_tags(line: String) -> String {
     text_only
 }
 
-// Line parsing function
+//
+// LINE PARSING FUNCTION
+//
 
 #[allow(clippy::too_many_lines)]
 fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> Option<Line> {
@@ -160,8 +166,6 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
     let open_tag_auto_pattern_grouped =
         regex!("^@([A-Z]{3})@([A-Z]{3,})@([A-Za-z]+)@(-@([0tf][ftalmr])@)?");
 
-    let page_pattern = regex!(r"PageV(\d+)P(\d+)");
-
     // When we come upon a tag for a "named entity," we can set this variable to indicate how
     // many of the *following* words (i.e., how much of the next token, I guess) to set aside
     // as the text of that entity
@@ -198,7 +202,7 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
 
         // Page number
         if token_trimmed.contains(PAGE) {
-            let page_captures = page_pattern.captures(token_trimmed);
+            let page_captures = PAGE_PATTERN.captures(token_trimmed);
 
             if let Some(page_matches) = page_captures {
                 let vol = page_matches[1].into();
@@ -429,18 +433,20 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
             // So I gave up and changed how this works. We instead add a NamedEntityText object
             // that should occur just after the NamedEntity object. And we can still capture the
             // correct number of words.
-            let mut entity = String::new();
-            let mut rest = String::new();
-
             let words: Vec<&str> = token_trimmed.split(' ').collect();
+            let num_words = words.len();
 
-            for (pos, word) in words.iter().rev().enumerate() {
-                if pos < (include_words as usize) {
-                    entity.push_str(word);
+            let mut entity = String::new();
+            let mut remainder = String::new();
+
+            if num_words >= include_words as usize {
+                remainder = words[..=include_words as usize].join(" ");
+
+                while include_words > 0 {
+                    let index = num_words - include_words as usize;
+                    entity.push_str(words[index]);
                     entity.push(' ');
-                } else {
-                    rest.push_str(word);
-                    rest.push(' ');
+                    include_words -= 1;
                 }
             }
 
@@ -451,13 +457,13 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
                 });
             }
 
-            if !rest.is_empty() {
+            if !remainder.is_empty() {
                 parts.push(LinePart::TextPart {
-                    text: rest.trim().into(),
+                    text: remainder.trim().into(),
                 });
             }
 
-            // Reset include_words to 0, entity_type to None
+            // Ensure include_words is reset to 0, entity_type to None
             include_words = 0;
             entity_type = None;
         } else {
@@ -497,7 +503,9 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
     Some(line_struct)
 }
 
-// Main parser function
+//
+// MAIN PARSER FUNCTION
+//
 
 /// # Errors
 ///
@@ -512,7 +520,6 @@ pub fn parser(input: &str) -> Result<Document> {
     };
 
     // Regexes. It would probably be ok to skip the once_cell approach here, but whatever
-    let page_pattern = regex!(r"PageV(\d+)P(\d+)");
     let morpho_pattern = regex!("#~:([^:]+?):");
     let para_pattern = regex!("^#($|[^#])");
     let bio_pattern = regex!(r"### \$[^#]");
@@ -550,7 +557,7 @@ pub fn parser(input: &str) -> Result<Document> {
         // Page number (not sure why this would happen)
         } else if line_trimmed.starts_with(PAGE) {
             // Try to capture volume and page numbers
-            if let Some(cap) = page_pattern.captures(line_trimmed) {
+            if let Some(cap) = PAGE_PATTERN.captures(line_trimmed) {
                 let vol = cap[1].into();
                 let page = cap[2].into();
 
@@ -765,6 +772,10 @@ pub fn parser(input: &str) -> Result<Document> {
 
     Ok(doc)
 }
+
+//
+// TESTS
+//
 
 #[cfg(test)]
 mod tests {
@@ -1092,13 +1103,13 @@ mod tests {
             }
 
             if let LinePart::NamedEntityText { text, ne_type } = &parts[2] {
-                assert_eq!(text, "معمر شيخ:");
+                assert_eq!(text, "شيخ: معمر");
                 assert!(ne_type.is_soc());
             } else {
                 panic!("Not NamedEntityText");
             }
 
-            assert_eq!(parts[3].as_text_part().unwrap(), r#"واسط.. 1"018: نزيل:"#);
+            assert_eq!(parts[3].as_text_part().unwrap(), r#"نزيل: 1"018: واسط.."#);
         } else {
             panic!("Not a Line");
         }
@@ -1212,6 +1223,42 @@ mod tests {
             assert_eq!(parts[5].as_text_part().unwrap(), "distance_as_recorded");
         } else {
             panic!("Not a Line");
+        }
+    }
+
+    #[test]
+    fn page_number() {
+        let content = &PARSED.content;
+
+        if let Content::Line(Line {
+            text_only: _,
+            parts,
+            line_type,
+        }) = &content[96]
+        {
+            assert!(line_type.is_normal());
+
+            if let LinePart::PageNumber(PageNumber { vol, page }) = &parts[0] {
+                assert_eq!(vol, "01M");
+                assert_eq!(page, "001");
+            } else {
+                panic!("Not a PageNumber");
+            }
+        }
+    }
+
+    #[test]
+    fn milestone() {
+        let content = &PARSED.content;
+
+        if let Content::Line(Line {
+            text_only: _,
+            parts,
+            line_type,
+        }) = &content[67]
+        {
+            assert!(line_type.is_normal());
+            assert!(parts[1].is_milestone());
         }
     }
 }
