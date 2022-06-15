@@ -433,20 +433,18 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
             // So I gave up and changed how this works. We instead add a NamedEntityText object
             // that should occur just after the NamedEntity object. And we can still capture the
             // correct number of words.
-            let words: Vec<&str> = token_trimmed.split(' ').collect();
-            let num_words = words.len();
-
             let mut entity = String::new();
             let mut remainder = String::new();
 
-            if num_words >= include_words as usize {
-                remainder = words[..=include_words as usize].join(" ");
+            let words: Vec<&str> = token_trimmed.split(' ').collect();
 
-                while include_words > 0 {
-                    let index = num_words - include_words as usize;
-                    entity.push_str(words[index]);
+            for (pos, word) in words.iter().enumerate() {
+                if pos < (include_words as usize) {
+                    entity.push_str(word);
                     entity.push(' ');
-                    include_words -= 1;
+                } else {
+                    remainder.push_str(word);
+                    remainder.push(' ');
                 }
             }
 
@@ -463,7 +461,7 @@ fn parse_line(tagged_line: &str, kind: Option<LineType>, first_token: bool) -> O
                 });
             }
 
-            // Ensure include_words is reset to 0, entity_type to None
+            // Reset include_words to 0, entity_type to None
             include_words = 0;
             entity_type = None;
         } else {
@@ -1089,6 +1087,8 @@ mod tests {
         {
             assert!(line_type.is_normal());
 
+            println!("{:?}", parts);
+
             if let LinePart::NamedEntity {
                 prefix,
                 extent,
@@ -1103,13 +1103,13 @@ mod tests {
             }
 
             if let LinePart::NamedEntityText { text, ne_type } = &parts[2] {
-                assert_eq!(text, "شيخ: معمر");
+                assert_eq!(text, r#"نزيل: 1"018:"#);
                 assert!(ne_type.is_soc());
             } else {
                 panic!("Not NamedEntityText");
             }
 
-            assert_eq!(parts[3].as_text_part().unwrap(), r#"نزيل: 1"018: واسط.."#);
+            assert_eq!(parts[3].as_text_part().unwrap(), "واسط.. شيخ: معمر");
         } else {
             panic!("Not a Line");
         }
