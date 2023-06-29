@@ -1,5 +1,11 @@
-#![warn(clippy::pedantic)]
-#![allow(clippy::wildcard_imports, clippy::doc_markdown)]
+#![warn(clippy::pedantic, clippy::nursery)]
+#![allow(
+    clippy::cognitive_complexity,
+    clippy::doc_markdown,
+    clippy::option_if_let_else,
+    clippy::useless_let_if_seq,
+    clippy::wildcard_imports
+)]
 
 use anyhow::{anyhow, Result};
 use once_cell::sync::{Lazy, OnceCell};
@@ -783,9 +789,7 @@ mod tests {
 
     static PARSED: Lazy<Document> = Lazy::new(|| {
         let full_text = fs::read_to_string("test.md").unwrap();
-        let text_parsed = parser(&full_text).unwrap();
-
-        text_parsed
+        parser(&full_text).unwrap()
     });
 
     #[test]
@@ -1087,7 +1091,7 @@ mod tests {
         {
             assert!(line_type.is_normal());
 
-            println!("{:?}", parts);
+            println!("{parts:?}");
 
             if let LinePart::NamedEntity {
                 prefix,
